@@ -1,13 +1,13 @@
 import { DatabaseSync } from 'node:sqlite';
 import { getSchema } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import { hospitals, seedTemplate, validateTemplate, makeCases, emptyBody } from '../src/report-model.mjs';
+import { hospitals, seedTemplate, validateTemplate, makeCases, emptyBody, normalizeBindings } from '../src/report-model.mjs';
 const bodySchema=getSchema([StarterKit.configure({codeBlock:false,horizontalRule:false,link:false,blockquote:false})]);
 export function openStore(filename) {
   const db=new DatabaseSync(filename);
   db.exec('PRAGMA journal_mode = WAL; CREATE TABLE IF NOT EXISTS templates (hospital TEXT PRIMARY KEY, payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS reports (hospital TEXT, case_id TEXT, payload TEXT NOT NULL, PRIMARY KEY (hospital, case_id));');
   for(const h of hospitals) db.prepare('INSERT OR IGNORE INTO templates VALUES (?,?)').run(h.id,JSON.stringify(seedTemplate(h.id)));
-  const getTemplate=id=>{const row=db.prepare('SELECT payload FROM templates WHERE hospital=?').get(id); if(!row) throw new Error('医院不存在');return JSON.parse(row.payload);};
+  const getTemplate=id=>{const row=db.prepare('SELECT payload FROM templates WHERE hospital=?').get(id); if(!row) throw new Error('医院不存在');return normalizeBindings(JSON.parse(row.payload));};
   const getCase=(id,caseId)=>{getTemplate(id);const c=makeCases(id).find(c=>c.id===caseId);if(!c) throw new Error('病例不属于当前医院');return c;};
   const getReport=(id,caseId)=>{getCase(id,caseId);const row=db.prepare('SELECT payload FROM reports WHERE hospital=? AND case_id=?').get(id,caseId);return row?JSON.parse(row.payload):null;};
   return {getTemplate,getCase,getReport,
@@ -15,7 +15,7 @@ export function openStore(filename) {
       const errors=validateTemplate(id,payload);if(errors.length) throw new Error(errors.join('；'));
       const previous=getTemplate(id);
       if(payload.revision!==previous.revision) throw new Error('模板已在其他窗口更新，请重新加载后再保存');
-      const saved={...payload,revision:previous.revision+1,updatedAt:new Date().toISOString()};
+      const saved={...normalizeBindings(payload),revision:previous.revision+1,updatedAt:new Date().toISOString()};
       db.prepare('UPDATE templates SET payload=? WHERE hospital=?').run(JSON.stringify(saved),id);return saved;
     },
     saveReport(id,caseId,body,context) {

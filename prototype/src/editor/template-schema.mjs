@@ -1,6 +1,6 @@
 import { Node, mergeAttributes, getSchema } from '@tiptap/core';
 export const ReportGrid=Node.create({
-  name:'reportGrid',group:'block',content:'reportField+',marks:'',isolating:true,
+  name:'reportGrid',group:'block',content:'reportField*',marks:'',isolating:true,
   addAttributes(){return {columns:{default:3},borders:{default:false},columnWidths:{default:[1,1,1]}}},
   parseHTML(){return [{tag:'div[data-report-grid]'}]},
   renderHTML({node,HTMLAttributes}) {return ['div',mergeAttributes(HTMLAttributes,{'data-report-grid':'',class:'report-grid',style:`grid-template-columns:${node.attrs.columnWidths.map(w=>`${w}fr`).join(' ')};`}),0]},

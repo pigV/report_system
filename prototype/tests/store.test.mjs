@@ -33,3 +33,27 @@ test('stale report saves do not overwrite another window',()=>{
     assert.throws(()=>store.saveReport('a','a-1',emptyBody(),context),/其他窗口/);
   } finally {store.close();}
 });
+
+test('dynamic empty and unbound templates persist without altering other hospitals or snapshots',()=>{
+  mkdirSync('tests/.tmp',{recursive:true});
+  const dir=mkdtempSync('tests/.tmp/dynamic-'), file=join(dir,'test.sqlite');
+  let store=openStore(file);
+  try {
+    const before=store.getTemplate('a'), other=store.getTemplate('b');
+    store.saveReport('a','a-1',emptyBody());
+    const changed=structuredClone(before);
+    changed.hospitalName='自定义医院';
+    changed.header.content[0].content=[];
+    changed.footer.content[0].content=[{type:'reportField',attrs:{fieldId:'custom_1',label:'备注',bold:false,textAlign:'left',span:1}}];
+    changed.bindings={custom_1:''};
+    store.saveTemplate('a',changed);
+    store.close();store=openStore(file);
+    assert.equal(store.getTemplate('a').hospitalName,'自定义医院');
+    assert.deepEqual(store.getTemplate('a').header.content[0].content,[]);
+    assert.equal(store.getTemplate('a').bindings.custom_1,'');
+    assert.deepEqual(store.getTemplate('b'),other);
+    assert.deepEqual(store.getReport('a','a-1').template,before);
+    store.saveReport('a','a-2',emptyBody(),{template:store.getTemplate('a'),caseId:'a-2',reportRevision:0});
+    assert.equal(store.getReport('a','a-2').template.hospitalName,'自定义医院');
+  } finally {store.close();rmSync(dir,{recursive:true,force:true});}
+});

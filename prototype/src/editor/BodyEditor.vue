@@ -1,10 +1,20 @@
 <script setup>
 import { shallowRef } from 'vue';
 import { YiiEditor } from '@yiitap/vue';
+import {closeHistory} from '@tiptap/pm/history';
+import {insertTemplateTransaction} from './insert-template.mjs';
 import { PhTextB, PhTextItalic, PhListBullets, PhArrowCounterClockwise } from '@phosphor-icons/vue';
 const props=defineProps({content:Object,readonly:Boolean});
 const emit=defineEmits(['update']);
 const editor=shallowRef(null);
+function insertTemplate(body){
+  if(!editor.value||props.readonly)return false;
+  editor.value.view.dispatch(insertTemplateTransaction(editor.value.state,body));
+  editor.value.view.dispatch(closeHistory(editor.value.state.tr));
+  editor.value.view.focus();
+  return true;
+}
+defineExpose({insertTemplate});
 </script>
 <template>
 <div class="body-editor">

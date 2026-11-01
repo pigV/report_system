@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { seedTemplate, clone, fieldsFor } from '../src/report-model.mjs';
-import { mergeSavedTemplate, isCompleteLayout, fieldColumn } from '../src/editor-state.mjs';
+import { mergeSavedTemplate, fieldColumn } from '../src/editor-state.mjs';
 
 test('editing after a save request keeps newer changes dirty while advancing server revision',()=>{
   const submitted=seedTemplate('a');
@@ -24,10 +24,34 @@ test('column selection accounts for preceding spans and row wrapping',()=>{
   assert.equal(fieldColumn(doc,'age'),2);
 });
 
-test('predefined field layout rejects deletion and arbitrary pasted document, permits movement',()=>{
-  const doc=seedTemplate('a').header, ids=fieldsFor(doc).map(f=>f.attrs.fieldId);
-  assert.equal(isCompleteLayout(doc,ids),true);
-  const deleted=clone(doc);deleted.content[0].content.pop();assert.equal(isCompleteLayout(deleted,ids),false);
-  assert.equal(isCompleteLayout({type:'doc',content:[{type:'paragraph'}]},ids),false);
-  const reordered=clone(doc);reordered.content[0].content.reverse();assert.equal(isCompleteLayout(reordered,ids),true);
+test('dynamic layout guard accepts added, deleted and empty grids but rejects duplicates and pasted prose', async()=>{
+  const {isValidLayout}=await import('../src/editor-state.mjs');
+  const doc=seedTemplate('a').header;
+  doc.content[0].content.pop();assert.equal(isValidLayout(doc),true);
+  doc.content[0].content.push({...clone(doc.content[0].content[0]),attrs:{...doc.content[0].content[0].attrs,fieldId:'new_field'}});
+  assert.equal(isValidLayout(doc),true);
+  doc.content[0].content.push(clone(doc.content[0].content[0]));assert.equal(isValidLayout(doc),false);
+  doc.content[0].content=[];assert.equal(isValidLayout(doc),true);
+  delete doc.content[0].content;assert.equal(isValidLayout(doc),true);
+  assert.equal(isValidLayout({type:'doc',content:[{type:'paragraph'}]}),false);
+});
+
+test('editor deletion and undo preserve bindings including independent changes made before undo',async()=>{
+  const {applyRegionEdit}=await import('../src/editor-state.mjs');
+  const {EditorState}=await import('@tiptap/pm/state');
+  const {history,undo}=await import('@tiptap/pm/history');
+  const {templateSchema}=await import('../src/editor/template-schema.mjs');
+  const original=seedTemplate('a');
+  let state=EditorState.create({schema:templateSchema,doc:templateSchema.nodeFromJSON(original.header),plugins:[history()]});
+  state=state.apply(state.tr.delete(1,2));
+  const deleted=applyRegionEdit(original,'header',state.doc.toJSON());
+  assert.equal(deleted.bindings.patientName,'patient.name');
+  deleted.bindings.patientName='patient.no';
+  assert.ok(undo(state,tr=>{state=state.apply(tr)}));
+  const restored=applyRegionEdit(deleted,'header',state.doc.toJSON());
+  assert.equal(restored.bindings.patientName,'patient.no');
+  assert.equal(restored.bindings.doctor,'report.doctor');
+  const unbound=clone(restored);unbound.bindings.patientName='';
+  const deletedAgain=applyRegionEdit(unbound,'header',deleted.header);
+  assert.equal(applyRegionEdit(deletedAgain,'header',restored.header).bindings.patientName,'');
 });

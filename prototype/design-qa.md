@@ -61,3 +61,10 @@ final result: passed
 - [x] 保存、加载、编辑、切换、预览与错误防护已覆盖。
 - [x] 桌面和窄屏已检查。
 - [x] 浏览器 tab 标记为 deliverable，预览继续运行。
+
+
+## Doctor workspace update — 2026-11-01
+
+The latest approved doctor report design and full comparison are documented in [doctor-workspace-design-qa.md](doctor-workspace-design-qa.md). Source: `assets/doctor-workspace-reference.png`; final browser evidence: `qa/doctor-workspace/desktop-final.png` (1513×1039 at DPR 1), `qa/doctor-workspace/mobile-final.png` (390px viewport). Combined full/focused comparisons are stored beside these screenshots. Fixed initial sidebar height and mobile card width findings. Verified history, filters, insertion/undo, case switching and persistence; browser error/warning log empty. Earlier template-configuration QA above is retained.
+
+final result: passed

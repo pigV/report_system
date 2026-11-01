@@ -1,0 +1,64 @@
+/* Scoped to the independent native editor; legacy screens retain their styling. */
+.native-workspace{--native-gold:#b68a48;--native-line:#e9e7e1;--yii-color:#33332f;--yii-bg-color:#fff;color:#30302c}
+.native-scope-note{display:flex;align-items:center;gap:9px;font-size:11px;color:#94918a;margin:-10px 0 15px}.native-version-tag{padding:3px 8px;border-radius:4px;background:#f6f0e5;color:#8e6c38}.native-scope-right{margin-left:auto}
+.native-grid{display:grid;grid-template-columns:minmax(490px,1.22fr) minmax(405px,1fr);gap:18px;align-items:start}
+.native-config{border:1px solid var(--native-line);border-radius:6px;background:#fff;min-width:0;overflow:visible}
+.native-tabs{height:57px;display:flex;gap:23px;align-items:stretch;border-bottom:1px solid var(--native-line);padding:0 23px}
+.native-tabs>button{font-size:15px;position:relative;color:#85847f;white-space:nowrap}.native-tabs>button[aria-selected=true]{font-weight:600;color:#302d27}.native-tabs>button[aria-selected=true]:after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:#917140}.native-tabs>button.native-binding-link{font-size:12px;color:#a77c3c}.native-tabs>button:last-child{display:flex;align-items:center}
+.native-toolbar{display:flex;align-items:center;gap:3px;flex-wrap:wrap;min-height:53px;margin:0 20px;border-bottom:1px solid #efeee9;padding:9px 0}.native-toolbar>button{width:28px;height:30px;border-radius:4px;display:flex;align-items:center;justify-content:center}.native-toolbar svg{width:17px;height:17px}.native-toolbar>button:hover,.native-toolbar>button[aria-pressed=true]{background:#f5eee2;color:#9a713b}.native-toolbar select{font-size:12px;border:1px solid #e5e4df;min-height:29px;padding:3px 8px;max-width:92px;background:#fff;border-radius:4px}.native-tool-separator{height:18px;width:1px;background:#e9e8e3;margin:0 4px}.native-color{position:relative;display:flex;align-items:center;justify-content:center;width:25px;height:28px;font-size:16px}.native-color>span{border-bottom:2px solid #b48a47;line-height:21px}.native-color input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.native-editor-hint{display:flex;justify-content:space-between;font-size:10px;color:#aaa69e;padding:12px 22px;gap:8px}
+.native-editor .yiitap{display:block;--yii-color:#3e3b36;--yii-primary-color:#a47b3e;--yii-bg-color:#fff;--yii-tippy-popover-bg-color:#fff;--yii-tippy-popover-color:#333;margin:0 20px;width:calc(100% - 40px);border:1px solid #eeede8;min-height:570px;background:#fff}
+.native-editor .editor-content{padding:0!important;margin:0!important;width:100%!important;max-width:none!important}
+.native-editor .tiptap{padding:28px 32px 50px!important;min-height:570px!important;max-width:none!important;font-size:14px!important;line-height:1.9;color:#363632;outline:none}
+.native-editor .tiptap h1,.native-document h1{font-family:'Songti SC','STSong',serif;font-size:27px!important;line-height:1.5;margin:0 0 5px!important;font-weight:700}
+.native-editor .tiptap h2,.native-document h2{font-family:'Songti SC','STSong',serif;font-size:22px!important;line-height:1.6;margin:0 0 18px!important;font-weight:700}
+.native-editor .tiptap h3,.native-document h3{font-size:18px;margin:14px 0 8px}
+.native-editor .tiptap p,.native-document p{margin:5px 0;min-height:1.8em;line-height:1.8}
+.native-editor .tiptap hr,.native-document hr{border:0;border-top:1px solid #a6a6a0;margin:20px 0!important}
+.native-editor .tiptap table,.native-document table{border-collapse:collapse;width:100%;table-layout:fixed;margin:20px 0;font-size:12px}
+.native-editor .tiptap td,.native-editor .tiptap th{border:1px dashed #dddcd6;padding:9px 8px;vertical-align:top;position:relative;min-width:40px}
+.native-editor .tiptap td p,.native-editor .tiptap th p{font-size:13px;margin:0;line-height:2.1}
+.native-editor .tiptap .selectedCell{background:#faf1df}
+.native-editor .tiptap .column-resize-handle{position:absolute;right:-2px;top:0;bottom:0;width:4px;background:#bd955e;pointer-events:none}
+.native-editor .tiptap.resize-cursor{cursor:col-resize}
+.native-editor .tableWrapper{overflow-x:auto}
+.native-field-token{display:inline-flex;align-items:center;border-radius:4px;padding:1px 7px;background:#f7eedf;color:#85683d;font:13px/1.8 -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;white-space:nowrap;cursor:grab;vertical-align:baseline;border:1px solid transparent;margin:0 2px}
+.native-field-token.ProseMirror-selectednode{border-color:#b68a48;background:#f1e3cb;outline:none}
+.native-editor .tiptap [data-type=column-container],.native-document [data-type=column-container]{display:flex;gap:16px;margin:15px 0}
+.native-editor .tiptap [data-type=column],.native-document [data-type=column]{flex:1;min-width:0}
+.native-editor .tiptap [data-type=column]{border:1px dashed #e5e1d8;padding:8px}
+.native-editor .tiptap ul,.native-document ul{padding-left:23px;list-style:disc}.native-editor .tiptap ol,.native-document ol{padding-left:23px;list-style:decimal}
+.native-editor-foot{display:flex;align-items:center;gap:13px;padding:15px 20px;font-size:10px;color:#99968e}.native-editor-foot span:first-child{display:flex;align-items:center;gap:6px}.native-editor-foot>span:last-child{margin-left:auto}.native-editor-foot button:hover{color:#9c7338}
+.native-preview{background:#f7f7f4;border:1px solid var(--native-line);border-radius:6px;min-width:0}
+.native-preview-toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 19px;height:61px;gap:8px}.native-preview-toolbar h2{font-size:15px;font-weight:600;white-space:nowrap}.native-preview-toolbar>div{display:flex;align-items:center;gap:10px;font-size:10px}.native-preview-toolbar select{border:0;background:transparent;color:#74746d;font-size:11px;max-width:90px;padding:3px}.native-preview .toggle.on{background:#b68a48}
+.native-paper-frame{padding:0 22px}.native-paper{background:#fff;padding:35px 28px 22px;min-height:640px;aspect-ratio:210/297;box-shadow:0 4px 20px #29221807;display:flex;flex-direction:column;color:#34342f;overflow-wrap:anywhere}
+.native-paper .native-document h1{font-size:24px!important}.native-paper .native-document h2{font-size:19px!important;margin-bottom:19px!important}
+.native-paper .native-document table{font-size:12px;line-height:1.8;margin:19px 0}.native-document td,.native-document th{padding:5px 3px;vertical-align:top;text-align:left}.native-document th{font-weight:600}.native-document p{font-size:12px}.native-field-value{font:inherit}
+.native-preview-body{flex:1;min-height:220px;border-top:1px solid #b0b0a9;margin:14px 0 0;padding-top:20px}.native-preview-body h3{font-family:'Songti SC',serif;font-size:18px;font-weight:700;margin:0 0 10px}.native-preview-body p{font-size:12px;color:#96968f;margin:0}.native-preview-body h3:not(:first-child){margin-top:62px}
+.native-paper-footer{margin-top:28px}.native-paper-footer table{margin:14px 0!important}.native-paper-footer p{font-size:10px;color:#74746d}.native-paper-footer hr{margin:0 0 13px!important}.native-preview-foot{text-align:center;padding:14px;font-size:10px;color:#aaa59a}
+.native-paper-frame.small .native-paper{width:85%;margin:0 auto;font-size:10px;min-height:550px}
+.native-dialog{width:min(620px,94vw);max-height:90vh}.native-bindings-dialog{width:min(740px,94vw)}.native-preview-dialog{width:min(760px,94vw);background:#f5f4f0}.native-preview-dialog .native-paper{min-height:850px;padding:45px}
+.native-binding-table{max-height:48vh;overflow:auto}.native-binding-head,.native-binding-row{display:grid;grid-template-columns:1fr 1.6fr 70px;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eeeae3;font-size:12px}.native-binding-head{font-size:11px;color:#929084}.native-binding-row input,.native-binding-row select,.native-new-field input,.native-new-field select{width:100%;min-width:0;font-size:12px;border:1px solid #e7e2d9;padding:8px;border-radius:4px;background:white}.native-binding-row .secondary-button{min-height:30px;padding:0 7px;font-size:11px}.native-dialog p.native-binding-help{font-size:11px;line-height:1.8;color:#9d9486;margin-top:13px}.native-new-field{padding-top:20px}.native-new-field h3{font-size:13px;margin-bottom:12px}.native-new-field>div{display:grid;grid-template-columns:1fr 1fr 100px;gap:10px}.native-new-field button{font-size:11px;min-height:32px;padding:0 8px}
+/* Yiitap teleports slash menus. Only apply the native skin while its view is mounted. */
+body:has(.native-workspace) .slash-tippy .o-slash-view{background:#fff;color:#3c3932;min-width:250px;max-height:330px;border:1px solid #e7e3da;border-radius:7px;box-shadow:0 6px 24px #352b1614;font-size:13px}
+body:has(.native-workspace) .slash-tippy .item.is-active{background:#f6eedf!important;color:#8e6935}
+body:has(.native-workspace) .slash-tippy .o-tips{color:#a09a8e;font-size:11px}
+body:has(.native-workspace) .yiitap-dropcursor{background:#b68a48!important}
+@media(min-width:1700px){.native-grid{grid-template-columns:minmax(650px,1.2fr) minmax(550px,1fr);gap:24px}.native-editor .tiptap{min-height:650px!important;padding:38px 45px!important}.native-editor .yiitap{min-height:650px}.native-paper{min-height:780px;padding:44px 36px}.native-preview-body h3:not(:first-child){margin-top:100px}}
+@media(max-width:1180px){.native-grid{grid-template-columns:minmax(400px,1.15fr) minmax(340px,1fr);gap:13px}.native-tabs{padding:0 17px}.native-editor .tiptap{padding:23px 22px 50px!important}.native-toolbar{gap:1px;margin:0 12px}.native-toolbar>button{width:25px}.native-tool-separator{margin:0 2px}.native-paper{padding:28px 19px;min-height:615px}.native-paper-frame{padding:0 15px}.native-preview-toolbar{padding:0 13px}.native-preview-toolbar>div{gap:6px}.native-editor .tiptap td{padding:6px 4px}.native-field-token{padding:0 4px;font-size:10px}}
+@media(max-width:930px){.native-grid{grid-template-columns:1fr}.native-preview{max-width:none}.native-paper{max-width:680px;margin:auto;min-height:700px}.native-config{min-width:0}.native-editor .tiptap{min-height:420px!important}.native-editor .yiitap{min-height:420px}.native-scope-right{display:none}}
+@media(max-width:600px){.native-tabs{gap:19px}.native-toolbar{gap:3px}.native-grid{gap:18px}.native-scope-note{font-size:10px}.native-editor .yiitap{margin:0 10px;width:calc(100% - 20px)}.native-editor .tiptap{padding:24px 20px!important}.native-editor-hint{padding:10px 15px}.native-editor-hint span:last-child{display:none}.native-editor-foot{padding:12px;font-size:9px;gap:6px}.native-binding-head,.native-binding-row{grid-template-columns:1fr 1.2fr 53px;gap:5px}.native-new-field>div{grid-template-columns:1fr}.native-paper{padding:25px 17px;min-height:600px}.native-preview-toolbar>div>span{display:none}}
+.native-slash-menu{width:270px;max-height:390px;overflow:auto;border:1px solid #e7e3da;border-radius:8px;background:#fff;box-shadow:0 7px 26px #352b1620;padding:8px;font:13px/1.5 -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:#48433a}
+.native-slash-title{display:flex;align-items:center;gap:9px;padding:6px 8px;background:#f6f5f2;border-radius:4px;font-size:12px;color:#898174}.native-slash-title button{display:flex}.native-slash-group{font-size:10px;color:#a29a8d;padding:10px 8px 5px}
+.native-slash-menu>button{display:flex;align-items:center;gap:12px;width:100%;padding:8px;border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}.native-slash-menu>button>span{flex:1}.native-slash-menu>button[aria-selected=true]{background:#f6eedf;color:#8e6935}.native-slash-help{font-size:10px;padding:9px 8px 2px;color:#aaa193}.native-slash-menu>p{padding:15px;font-size:12px;color:#999}
+@media(max-width:1450px) and (min-width:931px){.native-toolbar{gap:1px}.native-toolbar>button{width:24px}.native-tool-separator{margin:0 1px}.native-toolbar select{width:74px}.native-color{width:22px}}
+.native-paper-frame{min-width:0}.native-paper{width:100%;min-width:0;box-sizing:border-box}.native-document{min-width:0}.native-document table{min-width:0!important}.native-document td{overflow-wrap:anywhere}
+/* The native handle wraps a button. Let the draggable parent receive pointer input. */
+.native-editor .o-drag-btn{cursor:grab;-webkit-user-drag:element}.native-editor .o-drag-btn>button{pointer-events:none}
+
+.native-drop-line{position:fixed;height:2px;background:#b68a48;z-index:10001;pointer-events:none}
+
+/* Keep native node chrome from adding extra heading padding or a washed-out rule. */
+.native-editor .tiptap h1,.native-editor .tiptap h2{padding:0!important}
+.native-editor .o-horizontal-view .divider{border-top:1px solid #a6a6a0!important;background:transparent!important}
+@media(min-width:931px){.page-content:has(.native-workspace){padding-top:22px}.page-content:has(.native-workspace)>.page-heading{margin-bottom:18px}.native-paper{aspect-ratio:auto;min-height:700px}.native-paper-frame.small .native-paper{min-height:595px}}

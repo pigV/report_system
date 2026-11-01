@@ -10,3 +10,24 @@
 /* Keep primary actions available while scrolling. */
 .topbar{position:sticky;top:0;z-index:10;background:#fff}.sidebar-backdrop{display:none}
 @media(max-width:600px){.sidebar-backdrop{display:block;position:fixed;inset:0;background:#20201d22;z-index:14}}
+
+/* Editable heading and dynamic template fields. */
+.heading-settings{display:grid;gap:8px;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.heading-settings label{font-size:13px;font-weight:600}
+.heading-settings input{width:100%;border:1px solid #deded9;border-radius:5px;padding:9px 11px;background:#fff;font-size:14px}
+.heading-settings p{font-size:11px;color:#92928d;line-height:1.7}
+.field-actions{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap}
+.field-actions .secondary-button{min-height:33px;padding:0 11px;font-size:12px}
+.remove-field-button{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#8d6256;padding:6px 0}
+.field-actions>span{margin-left:auto;color:#99998f;font-size:11px}
+.layout-field-name{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:#77776f}
+.layout-field-name input{flex:1;min-width:0;border:1px solid var(--line);border-radius:4px;padding:7px 9px;font-size:13px}
+.binding-actions{display:flex;align-items:center;gap:8px;margin-top:12px}
+.binding-actions select{flex:1;min-width:0;font-size:12px;min-height:34px}
+.binding-actions .secondary-button{flex-shrink:0}
+.mapping-table-head,.mapping-row{grid-template-columns:24px minmax(65px,1fr) minmax(110px,1.2fr) 28px;gap:6px}
+.delete-field{min-width:26px;width:26px;color:#9a938b}.delete-field:hover{color:#b25142;background:#fcf1ed}
+.empty-fields,.empty-mapping{color:#92928d;font-size:12px;line-height:1.8;text-align:center;padding:22px 4px}
+.paper-value.unbound{color:#a38a66;font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:600px){.mapping-table-head,.mapping-row{grid-template-columns:18px minmax(60px,1fr) minmax(105px,1.2fr) 26px;gap:3px;padding-left:5px;padding-right:5px}.field-actions{gap:10px}.field-actions>span{font-size:10px}}
