@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { openStore } from '../server/store.mjs';
+import { emptyBody } from '../src/report-model.mjs';
+
+test('SQLite saves hospital templates across reopen, preserves other hospitals and report snapshots',()=>{
+  mkdirSync('tests/.tmp',{recursive:true});
+  const dir=mkdtempSync('tests/.tmp/store-'), file=join(dir,'test.sqlite');
+  let store=openStore(file);
+  try {
+    const original=store.getTemplate('a');
+    store.saveReport('a','a-1',emptyBody());
+    const changed=structuredClone(original); changed.title='测试报告标题';
+    store.saveTemplate('a',changed);
+    store.close();store=openStore(file);
+    assert.equal(store.getTemplate('a').title,'测试报告标题');
+    assert.equal(store.getTemplate('b').title,'医学影像检查报告');
+    assert.equal(store.getReport('a','a-1').template.title,original.title);
+    assert.throws(()=>store.saveReport('a','b-1',emptyBody()),/病例/);
+    assert.throws(()=>store.saveTemplate('b',changed),/医院/);
+    assert.throws(()=>store.saveReport('a','a-1',{type:'doc',content:[{type:'evil'}]}),/正文/);
+  } finally {store.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+test('stale report saves do not overwrite another window',()=>{
+  const store=openStore(':memory:');
+  try {
+    const context={template:store.getTemplate('a'),caseId:'a-1',reportRevision:0};
+    const first=store.saveReport('a','a-1',emptyBody(),context);
+    assert.equal(first.revision,1);
+    assert.throws(()=>store.saveReport('a','a-1',emptyBody(),context),/其他窗口/);
+  } finally {store.close();}
+});
