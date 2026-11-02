@@ -34,6 +34,32 @@ test('stale report saves do not overwrite another window',()=>{
   } finally {store.close();}
 });
 
+test('report blocks retain tables, columns, formatting and order across database reopen',()=>{
+  mkdirSync('tests/.tmp',{recursive:true});
+  const dir=mkdtempSync('tests/.tmp/body-blocks-'),file=join(dir,'test.sqlite');
+  let store=openStore(file);
+  const paragraph=text=>({type:'paragraph',content:[{type:'text',text}]});
+  const body={type:'doc',content:[
+    {type:'heading',attrs:{level:2,textAlign:'center'},content:[{type:'text',text:'影像所见'}]},
+    {type:'table',content:[{type:'tableRow',content:[{type:'tableCell',content:[paragraph('测量值')]}]}]},
+    {type:'columns',content:[{type:'column',content:[paragraph('左侧')]},{type:'column',content:[paragraph('右侧')]}]},
+    {type:'horizontalRule'},
+    {type:'paragraph',content:[{type:'text',text:'结论',marks:[{type:'underline'},{type:'textStyle',attrs:{color:'#333333'}}]}]},
+  ]};
+  try {
+    const snapshot=store.getTemplate('a');
+    store.saveReport('a','a-1',body);
+    store.close();store=openStore(file);
+    assert.deepEqual(store.getReport('a','a-1').body,body);
+    const reordered={...body,content:[body.content.at(-1),...body.content.slice(0,-1)]};
+    store.saveReport('a','a-1',reordered);
+    assert.deepEqual(store.getReport('a','a-1').body,reordered);
+    assert.deepEqual(store.getReport('a','a-1').template,snapshot);
+    assert.equal(store.getReport('b','b-1'),null);
+    assert.throws(()=>store.saveReport('a','a-1',{type:'doc',content:[{type:'table',content:[paragraph('invalid')]}]}),/正文/);
+  } finally {store.close();rmSync(dir,{recursive:true,force:true});}
+});
+
 test('dynamic empty and unbound templates persist without altering other hospitals or snapshots',()=>{
   mkdirSync('tests/.tmp',{recursive:true});
   const dir=mkdtempSync('tests/.tmp/dynamic-'), file=join(dir,'test.sqlite');

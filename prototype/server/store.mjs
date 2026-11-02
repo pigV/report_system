@@ -1,8 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
-import { getSchema } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
+import { bodySchema } from '../src/editor/body-schema.mjs';
 import { hospitals, seedTemplate, validateTemplate, makeCases, emptyBody, normalizeBindings } from '../src/report-model.mjs';
-const bodySchema=getSchema([StarterKit.configure({codeBlock:false,horizontalRule:false,link:false,blockquote:false})]);
 export function openStore(filename) {
   const db=new DatabaseSync(filename);
   db.exec('PRAGMA journal_mode = WAL; CREATE TABLE IF NOT EXISTS templates (hospital TEXT PRIMARY KEY, payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS reports (hospital TEXT, case_id TEXT, payload TEXT NOT NULL, PRIMARY KEY (hospital, case_id));');

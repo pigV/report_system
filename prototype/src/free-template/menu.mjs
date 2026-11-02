@@ -14,6 +14,9 @@ export function nativeMenuItems(query,fields){
  if(!q)return [...basics,{label:'业务字段',action:'fields',icon:'field',children:tokens}];
  return [...basics,...tokens].filter(x=>`${x.label} ${x.search??''} ${x.action==='field'?'field 字段':''}`.toLowerCase().includes(q));
 }
+export function bodyMenuItems(query){
+ return nativeMenuItems(query,[]).filter(item=>item.action!=='fields');
+}
 export function executeNativeInsert(editor,range,item){
  const chain=editor.chain().focus().deleteRange(range);
  switch(item.action){

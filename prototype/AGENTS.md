@@ -19,3 +19,7 @@ Use `assets/doctor-workspace-reference.png` for the report demo. Current patient
 ## Approved free-template menu (2026-11-02)
 
 The user approved `designs/medical-report-yiitap-native-v2.png` for implementation as a new menu while retaining existing functionality. Keep 自由模板 separate from 模板配置 and 报告演示. Its header/footer rich documents use Yiitap, free text, slash insertion, block/field drag, tables, columns and reusable business-field tokens. Default fields should already be available. Persist the new format independently; do not silently replace legacy templates or existing report snapshots. Preserve independent binding metadata when tokens are edited or removed.
+
+## Approved report body controls (2026-11-02)
+
+The report body uses the same Yiitap add, block menu and six-dot drag controls as free templates. Share block drag behavior, retain undoable common-template insertion, and persist all body blocks exposed by the insertion menu. History and full-page previews remain read-only.
