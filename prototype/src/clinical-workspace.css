@@ -67,7 +67,7 @@
 .doctor-workspace .report-paper{min-height:760px;padding:34px 32px 28px}
 .doctor-workspace .paper-fields{padding-top:24px;row-gap:24px}
 .doctor-workspace .paper-heading{padding-bottom:22px}
-.doctor-workspace .body-toolbar{border:1px solid #e8e9e8;border-radius:4px;padding:3px 6px;margin-bottom:16px}
+
 .doctor-workspace .body-editor{margin-top:28px}
 .doctor-workspace .body-editor .tiptap h2{font-family:'Songti SC','STSong',serif;font-size:19px;line-height:1.6;margin:14px 0 10px;font-weight:600}
 .doctor-workspace .body-editor .tiptap{font-size:14px;line-height:1.9;min-height:260px!important}

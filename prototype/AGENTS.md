@@ -23,3 +23,5 @@ The user approved `designs/medical-report-yiitap-native-v2.png` for implementati
 ## Approved report body controls (2026-11-02)
 
 The report body uses the same Yiitap add, block menu and six-dot drag controls as free templates. Share block drag behavior, retain undoable common-template insertion, and persist all body blocks exposed by the insertion menu. History and full-page previews remain read-only.
+
+The report body has no fixed top format toolbar or “报告正文” label strip. Use Yiitap’s inline block controls, selection bubble menu and keyboard shortcuts for editing.
