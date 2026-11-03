@@ -44,3 +44,34 @@
 - [x] 独立审查问题修复并复核。
 
 final result: passed
+
+
+## 2026-11-04 — Key image cascade menu
+
+- Source visual truth: `designs/key-image-menu-approved.png` (1536 × 1024 design board).
+- Implementation: `http://127.0.0.1:5177/`; `designs/key-image-menu-verified.png` and `designs/key-image-columns-verified.png` (1280 × 720 browser captures; CSS pixel density 1). A 719 × 881 browser view was also exercised for keyboard selection and viewport containment.
+- Comparison: `designs/key-image-comparison.png` contains full views and focused menu crops in one image. The design board includes two states and presentation headings; comparison targets the cascade controls and resulting native image row, rather than treating the board as one app viewport.
+- Typography: native system Chinese font; 13px image names, 11px metadata and count, 14px panel heading. Clear hierarchy, no clipped feature labels.
+- Layout: native first menu preserved with a custom-block section; secondary panel 340px wide, three thumbnail rows, count/clear/insert footer. Clamp to viewport using actual panel height.
+- Colors: white surfaces, subtle gray dividers, restrained teal checked rows/checkboxes/primary action.
+- Assets: reuse the actual key-image source assets used by the existing evidence rail. Result uses existing native image rendering and proportional scaling, with one equal column per selected image.
+- Copy: 关键影像、支持多选、已选 N 张、将生成 N 列、清空、插入 N 张. Added keyboard help is intentional. Existing menu entries remain available under 更多内容.
+
+### Comparison history
+
+1. [P2, resolved] Secondary panel clipped at bottom when using an estimated height. Measure actual panel height after render and clamp it to the viewport. Post-fix capture shows all three rows, footer and keyboard help.
+2. [P2, resolved] Entry initially required menu scrolling. Move it directly below the first five basic actions.
+3. [P2, resolved] Panel could use stale anchor geometry during scrolling. Resolve the live expanded entry and reposition after suggestion-host style updates and scroll/resize. Fresh-page tests in both scroll directions verified that the panel follows the entry, subject to viewport clamping.
+4. Final comparison: no remaining actionable P0/P1/P2 differences for this feature. The surrounding existing editor layout and image-block controls are retained.
+
+### Interaction verification
+
+- Plus and slash entry, multi-selection without dismissing the panel, clear and disabled empty-selection insertion.
+- Arrow keys/Space multi-selection, Enter insertion, Escape dismissal.
+- Three images insert at the original trigger, preserving surrounding paragraphs.
+- Browser figure count: 3 before insertion → 6 after insertion → 3 after one undo; redo restores the group.
+- Node suite: 71/71, including native schema validation and report storage.
+- Browser error-level console logs: none.
+- This is a local implementation; no publication or database migration.
+
+final result: passed

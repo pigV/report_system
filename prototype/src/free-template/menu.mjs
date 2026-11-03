@@ -1,4 +1,6 @@
 import {imageLayout} from '../editor/report-images.mjs';
+import {insertKeyImagesTransaction} from '../editor/key-image-insert.mjs';
+import {closeHistory} from '@tiptap/pm/history';
 const basics=[
  {label:'文本',action:'paragraph',icon:'text',search:'text paragraph 文本 段落'},
  {label:'一级标题',action:'h1',icon:'heading',search:'h1 heading 标题'},
@@ -16,7 +18,9 @@ export function nativeMenuItems(query,fields){
  return [...basics,...tokens].filter(x=>`${x.label} ${x.search??''} ${x.action==='field'?'field 字段':''}`.toLowerCase().includes(q));
 }
 export function bodyMenuItems(query){
- const items=[...nativeMenuItems('',[]).filter(item=>item.action!=='fields'),
+ const items=[...basics.slice(0,5),
+   {label:'关键影像',action:'keyImages',icon:'image',search:'key image 关键影像 图片',group:'自定义块'},
+   ...basics.slice(5).map((item,i)=>({...item,...(i===0?{group:'更多内容'}:{})})),
    {label:'三级标题',action:'h3',icon:'heading'},
    {label:'引用',action:'blockquote',icon:'text'},
    ...[[1,2,'二张图片'],[1,3,'三张图片'],[2,2,'四张图片'],[2,3,'六张图片']].map(([rows,columns,label])=>({label,action:`pictures-${rows}-${columns}`,rows,columns,icon:'columns'})),
@@ -25,6 +29,15 @@ export function bodyMenuItems(query){
  const q=query.trim().toLowerCase();return items.filter(item=>`${item.label} ${item.search??''} ${item.action}`.toLowerCase().includes(q));
 }
 export function executeNativeInsert(editor,range,item){
+ if(item.action==='keyImages'){
+  if(!editor.isEditable)return false;
+  const tr=insertKeyImagesTransaction(editor.state,range,item.imageIds??[]);
+  if(!tr)return false;
+  editor.view.dispatch(tr);
+  editor.view.dispatch(closeHistory(editor.state.tr));
+  editor.view.focus();
+  return true;
+ }
  if(item.action==='customPictures'){editor.view.dom.dispatchEvent(new CustomEvent('report-custom-pictures',{bubbles:true,detail:{range}}));return true}
  const chain=editor.chain().focus().deleteRange(range);
  if(item.action.startsWith('pictures-'))return chain.insertContent([...imageLayout(item.rows,item.columns),{type:'paragraph'}]).run();

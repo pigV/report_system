@@ -63,3 +63,7 @@ The report body and free-template editors lift the dragged block itself (not a s
 The report body and free-template slash menus share a Feishu-style column picker: preview five bars, choose 2–5 editable native columns by pointer or keyboard, and preserve the existing image layouts and business-field menu.
 
 When hovering over a text block inside a column, show only an add button following the pointer in that column; clicking it opens the insert menu on that block without creating another row. Do not show the button on non-text blocks. Restore the normal block controls outside columns.
+
+## Approved key image menu (2026-11-04)
+
+The report body's plus/slash insert menu includes 关键影像 under 自定义块. Open a secondary menu with image thumbnails, names, metadata and multi-select checkboxes using the same key-image data as the evidence sidebar. Keep the menu open while selecting; show the selected count and resulting column count, 清空 and 插入 N 张. Insert at the original menu anchor, one equal native column per selected image in selection order. Preserve surrounding content, report persistence, read-only/print rendering and single-step undo. The approved visual is `designs/key-image-menu-approved.png`.
