@@ -1,8 +1,9 @@
 <script setup>
 import { computed, ref, shallowRef, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
-import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhEye, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash } from '@phosphor-icons/vue';
+import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhEye, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash, PhPrinter } from '@phosphor-icons/vue';
 import TemplateEditor from './editor/TemplateEditor.vue';
 import ReportPaper from './ReportPaper.vue';
+import ReportPrintPreview from './ReportPrintPreview.vue';
 import ClinicalSidebar from './ClinicalSidebar.vue';
 import EvidenceSidebar from './EvidenceSidebar.vue';
 import NativeTemplateWorkspace from './free-template/NativeTemplateWorkspace.vue';
@@ -12,6 +13,9 @@ const hospital=ref('a'), section=ref('header'), view=ref(location.hash==='#nativ
 const data=ref(null), cases=ref([]), caseId=ref(''), report=ref(null), body=ref(emptyBody()), bodyBaseline=ref(''), bodyKey=ref(0);
 const loading=ref(true), saving=ref(false), error=ref(''), showData=ref(true), zoom=ref('100'), toast=ref(''), advanced=ref(false), mobileSidebar=ref(false);
 const modal=ref(''), dialog=ref(null), pendingAction=shallowRef(null), editorRef=ref(null);
+const printSnapshot=ref(null);
+function openPrint(){if(loading.value||saving.value||view.value!=='reports'||!paperData.value)return;closeModal();dialog.value?.close();printSnapshot.value=clone({template:paperTemplate.value,data:paperData.value,body:body.value})}
+function printShortcut(e){if(view.value==='reports'&&!printSnapshot.value&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrint()}}
 const reportPaper=ref(null),personalRef=ref(null),personalDirty=ref(false),selectedImage=ref('');
 watch([hospital,caseId],()=>selectedImage.value='');
 const nativeRef=ref(null),nativeDirty=ref(false),nativeBusy=ref(false),nativeError=ref('');
@@ -111,12 +115,12 @@ async function confirmSwitch(saveFirst){if(nativeBusy.value||saving.value)return
 function reset(){template.value=JSON.parse(baseline.value);selected.value=fieldsFor(template.value[section.value])[0]?.attrs.fieldId??'';closeModal();notify('已恢复到上次保存的配置')}
 watch(modal,async value=>{await nextTick();if(value)dialog.value?.showModal();else dialog.value?.close()});
 function beforeUnload(e){if(isDirty.value||personalDirty.value){e.preventDefault();e.returnValue=''}}
-onMounted(()=>{load();window.addEventListener('beforeunload',beforeUnload)});
-onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);clearTimeout(toastTimer)});
+onMounted(()=>{load();window.addEventListener('beforeunload',beforeUnload);document.addEventListener('keydown',printShortcut)});
+onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);document.removeEventListener('keydown',printShortcut);clearTimeout(toastTimer)});
 </script>
 
 <template>
-<div class="app-shell" :class="{'report-mode':view==='reports'}">
+<div class="app-shell" :inert="!!printSnapshot" :class="{'report-mode':view==='reports'}">
   <button v-if="mobileSidebar" class="sidebar-backdrop" aria-label="收起导航" @click="mobileSidebar=false"></button>
   <aside class="sidebar" :class="{expanded:mobileSidebar}" aria-label="工作空间导航">
     <div class="brand"><PhFileText :size="30" weight="bold"/><span>报告系统</span></div>
@@ -133,7 +137,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);cle
     <div class="sidebar-bottom"><span class="demo-label">交互原型 · 模拟数据</span><div class="profile"><PhUserCircle :size="34" weight="duotone"/><div><strong>{{view!=='reports'?'管理员':'报告医生'}}</strong><span>{{view!=='reports'?'模板管理工作台':'报告编辑工作台'}}</span></div></div></div>
   </aside>
   <main class="main-workspace">
-    <header class="topbar"><button class="icon-button mobile-menu" aria-label="展开导航" :aria-expanded="mobileSidebar" @click="mobileSidebar=!mobileSidebar"><PhList :size="20"/></button><div class="breadcrumb"><span>工作空间</span><PhCaretRight :size="12"/><span>{{hospitalName}}</span><PhCaretRight :size="12"/><strong>{{view==='native'?'自由模板':view==='templates'?'报告模板':'报告编辑'}}</strong></div><div class="top-actions"><span v-if="!loading&&!error" class="save-status"><PhCheckCircle v-if="!isDirty" :size="15"/><span v-else class="unsaved-dot"></span>{{isDirty?'有未保存的更改':'已保存'}}</span><button class="primary-button" :disabled="loading||saving||nativeBusy||!data" @click="save"><PhCircleNotch v-if="saving" class="spin" :size="17"/><PhFloppyDisk v-else :size="17"/>{{saving?'正在保存…':view!=='reports'?'保存模板':'保存报告'}}</button></div></header>
+    <header class="topbar"><button class="icon-button mobile-menu" aria-label="展开导航" :aria-expanded="mobileSidebar" @click="mobileSidebar=!mobileSidebar"><PhList :size="20"/></button><div class="breadcrumb"><span>工作空间</span><PhCaretRight :size="12"/><span>{{hospitalName}}</span><PhCaretRight :size="12"/><strong>{{view==='native'?'自由模板':view==='templates'?'报告模板':'报告编辑'}}</strong></div><div class="top-actions"><button v-if="view==='reports'" class="secondary-button report-print-button" :disabled="loading||saving||!data" @click="openPrint"><PhPrinter :size="17"/>打印</button><span v-if="!loading&&!error" class="save-status"><PhCheckCircle v-if="!isDirty" :size="15"/><span v-else class="unsaved-dot"></span>{{isDirty?'有未保存的更改':'已保存'}}</span><button class="primary-button" :disabled="loading||saving||nativeBusy||!data" @click="save"><PhCircleNotch v-if="saving" class="spin" :size="17"/><PhFloppyDisk v-else :size="17"/>{{saving?'正在保存…':view!=='reports'?'保存模板':'保存报告'}}</button></div></header>
     <section class="page-content">
       <div class="page-heading"><div><h1>{{view!=='reports'?'报告模板配置':'编写影像报告'}}</h1><p>{{view==='native'?'直接编辑模板内容，拖动内容块调整布局。':view==='templates'?'把医院的要求，变成清晰的报告。':'查看既往病历，快速引用常用模板。'}}</p></div><span class="workspace-note"><PhBuildings :size="15"/>{{hospitalName}}<span class="dot-separator">/</span>{{view!=='reports'?'通用报告模板':'模拟病例'}}</span></div>
       <div v-if="error" class="error-banner" role="alert"><PhWarningCircle :size="20"/><span>{{error}}</span><button @click="guard(load)">重新加载</button><button v-if="data" class="icon-button" aria-label="关闭错误提示" @click="error='' "><PhX :size="16"/></button></div>
@@ -199,6 +203,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);cle
     <template v-if="modal==='preview'"><div class="dialog-heading"><div><h2>{{hospitalName}} · 整页预览</h2><p>{{showData?'模拟数据展示':'字段占位符展示'}}</p></div><button class="icon-button" aria-label="关闭预览" @click="closeModal"><PhX :size="20"/></button></div><ReportPaper :template="paperTemplate" :data="paperData" :show-data="showData" :body="body" :readonly-body="view==='reports'"/></template>
   </dialog>
 </div>
+<ReportPrintPreview v-if="printSnapshot" :snapshot="printSnapshot" @close="printSnapshot=null"/>
 </template>
 
 <style src="./reference-theme.css"></style>
