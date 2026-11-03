@@ -43,3 +43,23 @@ Report printing footer alignment (2026-11-03): final-page signature fields are a
 ## Shared navigation (2026-11-03)
 
 Report demo uses the same global sidebar sizing, visible labels, icon alignment and active styling as template configuration and free templates. Do not collapse navigation specifically for report mode; retain the shared responsive behavior.
+
+## Report demo entry and toolbar (2026-11-03)
+
+This supersedes shared navigation for report mode: open report demo by default and hide global navigation there without an expand control. Keep the report's personal-template and evidence sidebars. Above the report, show the reference toolbar in this order: 选择模板、阅片、检查单、病历资料、收藏、相似病例、危急值、编辑检查、打印、导出报告. Only printing is connected for now; the other buttons are visual placeholders without an unavailable label.
+
+The report demo's overall visual layout should closely follow the supplied reference image: full-width three-column workspace, gray template rail, charcoal report toolbar, white report paper, and white evidence rail. Remove the patient summary, case selection, save status, and report-save controls above the paper; retain the enlarged preview control at the paper's upper right. Use larger toolbar buttons.
+
+## Approved pointer reordering (2026-11-03)
+
+Template layout fields and the 字段与数据绑定 rows both reorder with the same pointer-based interaction: a floating ghost follows the pointer, the source slot becomes a dashed placeholder, and neighbouring rows/cards slide with a short FLIP animation while the order commits live. Drag starts after a 4px threshold, supports mouse, touch and pen, auto-scrolls near list edges, cancels on Esc, blur or a drop outside the container, and respects `prefers-reduced-motion`. Keep the existing arrow-key reordering and single-transaction editor history; never revert to native HTML5 drag-and-drop for these controls.
+
+## Approved content-block drag (2026-11-03)
+
+The report body and free-template editors lift the dragged block itself (not a separate ghost): it eases after the pointer up and down with a visible trailing motion, keeps its grab point, and shows a highlighted insertion line in the gap. Blocks between the old and new slots slide with a spring FLIP animation (slight overshoot) while the order commits live. Dropping bounces the block into its slot; Esc, blur, or dropping outside the editor restores the original order. Keep the existing Yiitap six-dot handle, click suppression, focus behavior, and single-step undo for discrete moves. Never revert these blocks to native HTML5 drag-and-drop.
+
+## Approved column picker (2026-11-03)
+
+The report body and free-template slash menus share a Feishu-style column picker: preview five bars, choose 2–5 editable native columns by pointer or keyboard, and preserve the existing image layouts and business-field menu.
+
+When hovering inside a column, show only an add button following the pointer in that column; it opens the insert menu after the hovered block inside the same column. Restore the normal block controls outside columns.

@@ -2,6 +2,7 @@
 import { shallowRef, ref, onBeforeUnmount } from 'vue';
 import { YiiEditor } from '@yiitap/vue';
 import { useBlockDrag } from '../editor/use-block-drag.js';
+import ColumnInsertControl from '../editor/ColumnInsertControl.vue';
 import { businessSuggestion } from './suggestion.js';
 import { PhArrowCounterClockwise, PhArrowClockwise, PhTextB, PhTextItalic, PhTextUnderline, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhColumns, PhMinus, PhDatabase, PhDotsSixVertical } from '@phosphor-icons/vue';
 import { nativeExtensions } from './model.mjs';
@@ -40,6 +41,7 @@ onBeforeUnmount(()=>{if(editor.value&&!editor.value.isDestroyed)editor.value.com
   </div>
   <div class="native-editor-hint"><span>直接编辑{{region==='header'?'表头':'表尾'}}内容</span><span>文字、字段与布局均可调整</span></div>
   <YiiEditor :content="content" :editable="!disabled" :title="false" locale="zh-CN" page-view="full" :extensions="extensions" :show-main-menu="false" :show-bubble-menu="true" :bubble-menu="['bold','italic','underline','strike']" :side-menu="{show:true,add:'empty'}" @create="ready" @transaction="transact" @update="({editor:ed})=>emit('update',ed.getJSON())"/>
+  <ColumnInsertControl :editor="editor" :disabled="disabled"/>
   <Teleport to="body"><div v-if="dropLine" class="native-drop-line" :style="{left:dropLine.left+'px',top:dropLine.top+'px',width:dropLine.width+'px'}"/></Teleport>
   <div class="native-editor-foot"><span><PhDotsSixVertical :size="16"/>拖动块手柄调整顺序</span><button :disabled="disabled" @mousedown.prevent @click="insertMenu">输入 / 插入内容</button><span>100%</span></div>
 </div>

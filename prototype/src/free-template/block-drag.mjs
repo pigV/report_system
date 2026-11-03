@@ -2,7 +2,8 @@ import { Selection } from '@tiptap/pm/state';
 import { closeHistory } from '@tiptap/pm/history';
 
 // One transaction keeps a block move atomic for undo and leaves nested content intact.
-export function reorderBlock(state, from, boundary) {
+// Live drags skip closing history on every crossing and suppress scrolling until drop.
+export function reorderBlock(state, from, boundary, { closeGroup = true, scrollIntoView = true } = {}) {
   const positions = [];
   state.doc.forEach((node, pos) => positions.push({ node, pos }));
   const source = positions.find(item => item.pos === from);
@@ -10,6 +11,8 @@ export function reorderBlock(state, from, boundary) {
   const end = from + source.node.nodeSize;
   if (boundary === from || boundary === end) return null;
   const target = boundary > from ? boundary - source.node.nodeSize : boundary;
-  const tr = closeHistory(state.tr).delete(from, end).insert(target, source.node);
-  return tr.setSelection(Selection.near(tr.doc.resolve(target))).scrollIntoView();
+  let tr = closeGroup ? closeHistory(state.tr) : state.tr;
+  tr = tr.delete(from, end).insert(target, source.node);
+  tr = tr.setSelection(Selection.near(tr.doc.resolve(target)));
+  return scrollIntoView ? tr.scrollIntoView() : tr;
 }

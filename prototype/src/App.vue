@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, shallowRef, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
-import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhEye, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash, PhPrinter } from '@phosphor-icons/vue';
+import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhEye, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash, PhPrinter, PhSquaresFour, PhImage, PhFolder, PhStar, PhMagnifyingGlass, PhWarning, PhExport } from '@phosphor-icons/vue';
 import TemplateEditor from './editor/TemplateEditor.vue';
 import ReportPaper from './ReportPaper.vue';
 import ReportPrintPreview from './ReportPrintPreview.vue';
@@ -9,11 +9,19 @@ import EvidenceSidebar from './EvidenceSidebar.vue';
 import NativeTemplateWorkspace from './free-template/NativeTemplateWorkspace.vue';
 import { hospitals, fieldsFor, readPath, pathOptions, validateTemplate, clone, moveField, emptyBody, addTemplateField, removeTemplateField, reportHospitalName, normalizeBindings, addBindingField, removeBindingField, moveBindingField } from './report-model.mjs';
 import { mergeSavedTemplate, fieldColumn, applyRegionEdit } from './editor-state.mjs';
-const hospital=ref('a'), section=ref('header'), view=ref(location.hash==='#native-templates'?'native':'templates'), template=ref(null), baseline=ref(''), selected=ref('patientName');
-const data=ref(null), cases=ref([]), caseId=ref(''), report=ref(null), body=ref(emptyBody()), bodyBaseline=ref(''), bodyKey=ref(0);
+import { startPointerSort } from './editor/pointer-sort.js';
+const hospital=ref('a'), section=ref('header'), view=ref(location.hash==='#native-templates'?'native':location.hash==='#templates'?'templates':'reports'), template=ref(null), baseline=ref(''), selected=ref('patientName');
+const data=ref(null), caseId=ref(''), report=ref(null), body=ref(emptyBody()), bodyBaseline=ref(''), bodyKey=ref(0);
 const loading=ref(true), saving=ref(false), error=ref(''), showData=ref(true), zoom=ref('100'), toast=ref(''), advanced=ref(false), mobileSidebar=ref(false);
 const modal=ref(''), dialog=ref(null), pendingAction=shallowRef(null), editorRef=ref(null);
 const printSnapshot=ref(null);
+const reportActions=[
+  {label:'选择模板',icon:PhSquaresFour}, {label:'阅片',icon:PhImage},
+  {label:'检查单',icon:PhFileText}, {label:'病历资料',icon:PhFolder},
+  {label:'收藏',icon:PhStar}, {label:'相似病例',icon:PhMagnifyingGlass},
+  {label:'危急值',icon:PhWarning}, {label:'编辑检查',icon:PhPencilSimple},
+  {label:'打印',icon:PhPrinter}, {label:'导出报告',icon:PhExport}
+];
 function openPrint(){if(loading.value||saving.value||view.value!=='reports'||!paperData.value)return;closeModal();dialog.value?.close();printSnapshot.value=clone({template:paperTemplate.value,data:paperData.value,body:body.value})}
 function printShortcut(e){if(view.value==='reports'&&!printSnapshot.value&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrint()}}
 const reportPaper=ref(null),personalRef=ref(null),personalDirty=ref(false),selectedImage=ref('');
@@ -59,7 +67,7 @@ async function load(){
   try {
     const [t,list]=await Promise.all([api('template'),api('cases')]);
     if(token!==loadVersion)return;
-    template.value=normalizeBindings(t);baseline.value=JSON.stringify(template.value);cases.value=list;
+    template.value=normalizeBindings(t);baseline.value=JSON.stringify(template.value);
     if(!list.some(c=>c.id===caseId.value))caseId.value=list[0].id;
     const [sample,saved]=await Promise.all([api(`cases/${caseId.value}`),api(`reports/${caseId.value}`)]);
     if(token!==loadVersion)return;
@@ -69,8 +77,7 @@ async function load(){
 }
 function guard(action){if(saving.value||nativeBusy.value)return;if(isDirty.value||personalDirty.value){pendingAction.value=action;modal.value='unsaved'}else action()}
 function chooseHospital(id){if(id===hospital.value)return;guard(()=>{hospital.value=id;caseId.value='';mobileSidebar.value=false;load()})}
-function chooseView(id){if(id===view.value)return;guard(()=>{view.value=id;history.replaceState(null,'',id==='native'?'#native-templates':location.pathname);showData.value=true;mobileSidebar.value=false;load()})}
-function chooseCase(e){const id=e.target.value;e.target.value=caseId.value;if(id===caseId.value)return;guard(()=>{caseId.value=id;load()})}
+function chooseView(id){if(id===view.value)return;guard(()=>{view.value=id;history.replaceState(null,'',id==='native'?'#native-templates':id==='templates'?'#templates':location.pathname);showData.value=true;mobileSidebar.value=false;load()})}
 function chooseSection(id){section.value=id;selected.value=fieldsFor(template.value[id])[0]?.attrs.fieldId??'';advanced.value=false}
 function setDoc(doc){
   template.value=applyRegionEdit(template.value,section.value,doc);
@@ -93,8 +100,20 @@ function setColumns(value){const doc=clone(currentDoc.value),g=doc.content[0],co
 function toggleBorders(){const doc=clone(currentDoc.value);doc.content[0].attrs.borders=!doc.content[0].attrs.borders;setDoc(doc)}
 function setWidth(value){const doc=clone(currentDoc.value);doc.content[0].attrs.columnWidths[fieldColumn(currentDoc.value,selected.value)]=Number(value);setDoc(doc)}
 function shift(offset){const target=fields.value[selectedIndex.value+offset];if(target)setDoc(moveField(currentDoc.value,selected.value,target.attrs.fieldId))}
-function rowDrag(e,id){e.dataTransfer.setData('application/report-binding',id);e.dataTransfer.effectAllowed='move'}
-function rowDrop(e,to){const from=e.dataTransfer.getData('application/report-binding');if(from)template.value=moveBindingField(template.value,from,to)}
+function beginRowDrag(event,id){
+  if(event.button!==0)return;
+  const table=event.currentTarget.closest('.mapping-table');
+  if(!table)return;
+  const snapshot=JSON.stringify(template.value);
+  startPointerSort({
+    event,
+    container:table,
+    itemSelector:'.mapping-row[data-sort-id]',
+    sourceId:id,
+    onReorder:async(from,to)=>{template.value=moveBindingField(template.value,from,to);await nextTick()},
+    onCancel:async()=>{template.value=JSON.parse(snapshot);await nextTick()},
+  });
+}
 async function save(){
   if(view.value==='native')return await nativeRef.value?.save()??false;
   saving.value=true;error.value='';
@@ -122,7 +141,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
 <template>
 <div class="app-shell" :inert="!!printSnapshot" :class="{'report-mode':view==='reports'}">
   <button v-if="mobileSidebar" class="sidebar-backdrop" aria-label="收起导航" @click="mobileSidebar=false"></button>
-  <aside class="sidebar" :class="{expanded:mobileSidebar}" aria-label="工作空间导航">
+  <aside v-if="view!=='reports'" class="sidebar" :class="{expanded:mobileSidebar}" aria-label="工作空间导航">
     <div class="brand"><PhFileText :size="30" weight="bold"/><span>报告系统</span></div>
     <nav class="main-nav">
       <button aria-label="模板配置" :class="{active:view==='templates'}" :disabled="loading||saving||nativeBusy" @click="chooseView('templates')"><PhFileText :size="21"/><span>模板配置</span></button>
@@ -137,9 +156,9 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
     <div class="sidebar-bottom"><span class="demo-label">交互原型 · 模拟数据</span><div class="profile"><PhUserCircle :size="34" weight="duotone"/><div><strong>{{view!=='reports'?'管理员':'报告医生'}}</strong><span>{{view!=='reports'?'模板管理工作台':'报告编辑工作台'}}</span></div></div></div>
   </aside>
   <main class="main-workspace">
-    <header class="topbar"><button class="icon-button mobile-menu" aria-label="展开导航" :aria-expanded="mobileSidebar" @click="mobileSidebar=!mobileSidebar"><PhList :size="20"/></button><div class="breadcrumb"><span>工作空间</span><PhCaretRight :size="12"/><span>{{hospitalName}}</span><PhCaretRight :size="12"/><strong>{{view==='native'?'自由模板':view==='templates'?'报告模板':'报告编辑'}}</strong></div><div class="top-actions"><button v-if="view==='reports'" class="secondary-button report-print-button" :disabled="loading||saving||!data" @click="openPrint"><PhPrinter :size="17"/>打印</button><span v-if="!loading&&!error" class="save-status"><PhCheckCircle v-if="!isDirty" :size="15"/><span v-else class="unsaved-dot"></span>{{isDirty?'有未保存的更改':'已保存'}}</span><button class="primary-button" :disabled="loading||saving||nativeBusy||!data" @click="save"><PhCircleNotch v-if="saving" class="spin" :size="17"/><PhFloppyDisk v-else :size="17"/>{{saving?'正在保存…':view!=='reports'?'保存模板':'保存报告'}}</button></div></header>
+    <header v-if="view!=='reports'" class="topbar"><button class="icon-button mobile-menu" aria-label="展开导航" :aria-expanded="mobileSidebar" @click="mobileSidebar=!mobileSidebar"><PhList :size="20"/></button><div class="breadcrumb"><span>工作空间</span><PhCaretRight :size="12"/><span>{{hospitalName}}</span><PhCaretRight :size="12"/><strong>{{view==='native'?'自由模板':'报告模板'}}</strong></div><div class="top-actions"><span v-if="!loading&&!error" class="save-status"><PhCheckCircle v-if="!isDirty" :size="15"/><span v-else class="unsaved-dot"></span>{{isDirty?'有未保存的更改':'已保存'}}</span><button class="primary-button" :disabled="loading||saving||nativeBusy||!data" @click="save"><PhCircleNotch v-if="saving" class="spin" :size="17"/><PhFloppyDisk v-else :size="17"/>{{saving?'正在保存…':'保存模板'}}</button></div></header>
     <section class="page-content">
-      <div class="page-heading"><div><h1>{{view!=='reports'?'报告模板配置':'编写影像报告'}}</h1><p>{{view==='native'?'直接编辑模板内容，拖动内容块调整布局。':view==='templates'?'把医院的要求，变成清晰的报告。':'查看既往病历，快速引用常用模板。'}}</p></div><span class="workspace-note"><PhBuildings :size="15"/>{{hospitalName}}<span class="dot-separator">/</span>{{view!=='reports'?'通用报告模板':'模拟病例'}}</span></div>
+      <div v-if="view!=='reports'" class="page-heading"><div><h1>报告模板配置</h1><p>{{view==='native'?'直接编辑模板内容，拖动内容块调整布局。':'把医院的要求，变成清晰的报告。'}}</p></div><span class="workspace-note"><PhBuildings :size="15"/>{{hospitalName}}<span class="dot-separator">/</span>通用报告模板</span></div>
       <div v-if="error" class="error-banner" role="alert"><PhWarningCircle :size="20"/><span>{{error}}</span><button @click="guard(load)">重新加载</button><button v-if="data" class="icon-button" aria-label="关闭错误提示" @click="error='' "><PhX :size="16"/></button></div>
       <div v-if="loading" class="loading-state"><PhCircleNotch class="spin" :size="28"/><h2>正在加载{{hospitalName}}的报告模板</h2><p>读取配置与模拟病例数据…</p></div>
       <NativeTemplateWorkspace v-else-if="view==='native'&&data" :key="hospital" ref="nativeRef" :hospital="hospital" :data="data" @dirty="v=>nativeDirty=v" @busy="v=>nativeBusy=v" @notify="notify" @error="v=>nativeError=v"/>
@@ -170,8 +189,8 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
             <div class="mapping-section"><div class="mapping-heading"><h2>字段与数据绑定</h2><span><PhCheckCircle :size="15" weight="fill"/>{{boundCount}} / {{bindingRows.length}} 个字段已绑定</span></div>
               <div class="mapping-table" role="table" aria-label="字段映射关系">
                 <div class="mapping-table-head" role="row"><span></span><span role="columnheader">字段名称</span><span role="columnheader">数据来源</span><span class="sr-only" role="columnheader">操作</span></div>
-                <div v-for="f in bindingRows" :key="f.id" class="mapping-row" role="row" @dragover.prevent @drop.prevent="rowDrop($event,f.id)">
-                  <button class="row-grip" draggable="true" :aria-label="`调整绑定${f.label}顺序`" title="拖动调整绑定顺序；方向键前移或后移" @dragstart="rowDrag($event,f.id)" @keydown.up.prevent="bindingRows.indexOf(f)>0&&(template=moveBindingField(template,f.id,bindingRows[bindingRows.indexOf(f)-1].id))" @keydown.down.prevent="bindingRows.indexOf(f)<bindingRows.length-1&&(template=moveBindingField(template,f.id,bindingRows[bindingRows.indexOf(f)+1].id))"><PhDotsSixVertical :size="18"/></button>
+                <div v-for="f in bindingRows" :key="f.id" class="mapping-row" role="row" :data-sort-id="f.id">
+                  <button class="row-grip" :aria-label="`调整绑定${f.label}顺序`" title="拖动调整绑定顺序；方向键前移或后移" @pointerdown="beginRowDrag($event,f.id)" @keydown.up.prevent="bindingRows.indexOf(f)>0&&(template=moveBindingField(template,f.id,bindingRows[bindingRows.indexOf(f)-1].id))" @keydown.down.prevent="bindingRows.indexOf(f)<bindingRows.length-1&&(template=moveBindingField(template,f.id,bindingRows[bindingRows.indexOf(f)+1].id))"><PhDotsSixVertical :size="18"/></button>
                   <input class="field-name-input" :aria-label="`${f.id} 绑定名称`" v-model="f.label" maxlength="20"/>
                   <div class="select-wrap mapping-select"><select :aria-label="`${f.label}数据来源`" v-model="template.bindings[f.id]"><option value="">未绑定（解除绑定）</option><option v-for="o in pathOptions" :key="o.path" :value="o.path">{{o.path}}</option></select><PhCaretDown :size="12"/></div>
                   <button class="icon-button delete-field" :aria-label="`删除绑定：${f.label}`" title="仅删除此绑定" @click="deleteBinding(f.id)"><PhTrash :size="16"/></button>
@@ -186,9 +205,13 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
         </section>
         <ClinicalSidebar v-else ref="personalRef" :hospital="hospital" :disabled="saving" @insert="insertTemplate" @dirty="v=>personalDirty=v" @notify="notify"/>
         <section class="preview-panel" aria-label="实时预览">
-          <div class="report-patient-bar" v-if="view==='reports'"><span><strong>{{paperData?.patient?.name}}</strong> {{paperData?.patient?.gender}} · {{paperData?.patient?.age}} · {{paperData?.patient?.no}}</span><select aria-label="选择模拟病例" :value="caseId" :disabled="saving" @change="chooseCase"><option v-for="item in cases" :value="item.id" :key="item.id">{{item.label}}</option></select></div>
-          <div class="preview-toolbar"><h2>{{view==='templates'?'整页预览':'报告编辑'}}</h2><div class="preview-options"><template v-if="view==='templates'"><span>模拟数据</span><button class="toggle" role="switch" aria-label="显示模拟数据" :aria-checked="showData" :class="{on:showData}" @click="showData=!showData"><span></span></button><div class="select-wrap zoom-select"><select aria-label="预览缩放" v-model="zoom"><option value="100">100%</option><option value="85">85%</option></select><PhCaretDown :size="12"/></div></template><button class="icon-button expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="17"/></button></div></div>
-          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" :selected="selected" @update-body="v=>body=v"/></div>
+          <div v-if="view==='reports'" class="report-action-bar" role="toolbar" aria-label="报告操作">
+            <button v-for="action in reportActions" :key="action.label" type="button" :disabled="action.label==='打印'&&(loading||saving||!data)" @click="action.label==='打印'&&openPrint()">
+              <component :is="action.icon" :size="22"/><span>{{action.label}}</span>
+            </button>
+          </div>
+          <div v-if="view==='templates'" class="preview-toolbar"><h2>整页预览</h2><div class="preview-options"><span>模拟数据</span><button class="toggle" role="switch" aria-label="显示模拟数据" :aria-checked="showData" :class="{on:showData}" @click="showData=!showData"><span></span></button><div class="select-wrap zoom-select"><select aria-label="预览缩放" v-model="zoom"><option value="100">100%</option><option value="85">85%</option></select><PhCaretDown :size="12"/></div><button class="icon-button expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="17"/></button></div></div>
+          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><button v-if="view==='reports'" class="icon-button report-expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="19"/></button><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" :selected="selected" @update-body="v=>body=v"/></div>
           <div class="preview-footnote"><span><PhDatabase :size="13"/>仅使用模拟数据</span><span>{{view==='templates'?'布局修改实时呈现':'正文支持自由编辑'}}</span></div>
         </section>
         <EvidenceSidebar v-if="view==='reports'" :hospital="hospital" :case-id="caseId" :data="paperData" :disabled="saving" :selected-image="selectedImage" @insert="insertTemplate" @select-image="id=>selectedImage=id"/>
@@ -205,3 +228,34 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
 </div>
 <ReportPrintPreview v-if="printSnapshot" :snapshot="printSnapshot" @close="printSnapshot=null"/>
 </template>
+
+<style>
+.report-mode .main-workspace{margin-left:0;width:100%}
+html body .app-shell.report-mode .page-content{padding:7px;background:#eff0f3}
+.report-mode .doctor-workspace{grid-template-columns:clamp(220px,21.5vw,280px) minmax(0,1fr) clamp(220px,22vw,280px);gap:8px;align-items:start}
+.report-mode .personal-sidebar{min-height:calc(100vh - 14px);padding:0 10px 12px;border:0;border-radius:0;background:#c9c9c9}
+.report-mode .personal-sidebar>.assistance-title{min-height:35px;margin:0 -10px;padding:0 10px;background:#606062;color:#fff}
+.report-mode .personal-sidebar>.assistance-title h2{color:#fff}
+.report-mode .personal-sidebar>.assistance-title .mock-badge{background:#767879;color:#fff}
+.report-mode .personal-sidebar .template-search{margin-top:0}
+.report-mode .evidence-sidebar{gap:7px;padding:7px;background:#fff}
+.report-mode .evidence-images,.report-mode .evidence-history{padding:0;border:0;border-radius:0}
+.report-mode .evidence-sidebar .assistance-title{margin:0 0 8px}
+.report-mode .preview-panel{border:0;border-radius:0}
+.report-action-bar{display:flex;overflow-x:auto;background:#595b5c;border-bottom:1px solid #494b4c;scrollbar-width:thin}
+.report-action-bar button{display:flex;flex:1 0 72px;min-height:58px;align-items:center;justify-content:center;flex-direction:column;gap:4px;padding:6px;border:0;border-right:1px solid #6c6e6f;background:transparent;color:#fff;font-size:12px;line-height:1.2;white-space:nowrap;cursor:pointer}
+.report-action-bar button:hover{background:#6b6d6e}
+.report-action-bar button:disabled{opacity:.55;cursor:not-allowed}
+.report-action-bar button:focus-visible{outline:2px solid #a7d7d2;outline-offset:-3px}
+.doctor-workspace .paper-container{position:relative}
+.report-expand-button{position:absolute;top:10px;right:10px;z-index:1;width:36px;height:36px;border:1px solid #dedede;border-radius:4px;background:#fff;color:#626768}
+.report-expand-button:hover{background:#f0f5f4;color:#34706c}
+.doctor-workspace .report-paper{min-height:calc(100vh - 100px);padding:32px 18px;font-family:"Songti SC","STSong",serif}
+.doctor-workspace .paper-heading{padding-left:40px;padding-right:40px;border-bottom:2px solid #242424}
+.doctor-workspace .paper-fields:not(.paper-footer){row-gap:10px;padding:17px 0;border-bottom:2px solid #242424}
+.doctor-workspace .paper-field{display:block;line-height:1.7}
+.doctor-workspace .paper-label,.doctor-workspace .paper-value{font-size:14px;color:#292929}
+.doctor-workspace .paper-label::after{content:"：";margin-right:5px}
+@media(max-width:900px){.report-mode .doctor-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.report-mode .personal-sidebar{min-height:0}}
+@media(max-width:600px){.report-mode .doctor-workspace{display:flex}.report-mode .report-paper{padding:24px 16px}}
+</style>

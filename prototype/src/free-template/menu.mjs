@@ -35,7 +35,7 @@ export function executeNativeInsert(editor,range,item){
  case 'h3':return chain.setHeading({level:3}).run();
  case 'blockquote':return chain.toggleBlockquote().run();
  case 'table':return chain.insertTable({rows:2,cols:3,withHeaderRow:false}).run();
- case 'columns':return chain.insertMultiColumn(2).run();
+ case 'columns':return chain.insertMultiColumn(item.columns).run();
  case 'rule':return chain.setHorizontalRule().run();
  case 'bulletList':return chain.toggleBulletList().run();
  case 'orderedList':return chain.toggleOrderedList().run();

@@ -6,6 +6,7 @@ import {replaceSectionsTransaction} from './report-sections.mjs';
 import {imageLayout} from './report-images.mjs';
 import { useBlockDrag } from './use-block-drag.js';
 import { bodyExtensions } from './body-schema.mjs';
+import ColumnInsertControl from './ColumnInsertControl.vue';
 import { businessSuggestion } from '../free-template/suggestion.js';
 import { bodyMenuItems } from '../free-template/menu.mjs';
 const props=defineProps({content:Object,readonly:Boolean,scope:Object,selectedImage:String});
@@ -36,6 +37,7 @@ defineExpose({insertTemplate});
 <template>
 <div class="body-editor" :class="{'body-editor-editable':!readonly}" @mousedown.capture="startDrag" @click.capture="handleClick" @report-custom-pictures="customPictures">
   <YiiEditor :content="content" :editable="!readonly" :extensions="extensions" :title="false" locale="zh-CN" page-view="full" :show-main-menu="false" :show-bubble-menu="!readonly" :bubble-menu="['bold','italic','underline','strike']" :show-floating-menu="false" :show-side-node="false" :side-menu="{show:!readonly,add:'empty'}" @create="ready" @update="({editor:e})=>emit('update',e.getJSON())"/>
+  <ColumnInsertControl :editor="editor" :disabled="readonly"/>
   <Teleport to="body"><div v-if="dropLine" class="native-drop-line" :style="{left:dropLine.left+'px',top:dropLine.top+'px',width:dropLine.width+'px'}"/></Teleport>
   <div v-if="!readonly" class="body-hint">输入 / 或点击 ＋ 插入内容，拖动块手柄调整顺序。</div>
   <dialog ref="layoutDialog" class="app-dialog"><h2>自定义图片栏</h2><p>使用编辑器原生分栏排列图片。</p><div class="picture-layout-fields"><label>行数<select v-model="rows" aria-label="图片行数"><option v-for="n in 3" :value="n">{{n}}</option></select></label><label>列数<select v-model="columns" aria-label="图片列数"><option v-for="n in 4" :value="n">{{n}}</option></select></label></div><div class="dialog-actions"><button class="secondary-button" @click="layoutDialog.close()">取消</button><button class="primary-button" @click="addPictures">插入 {{rows*columns}} 个图片位置</button></div></dialog>

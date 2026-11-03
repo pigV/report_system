@@ -7,6 +7,6 @@ import FieldView from './FieldView.vue';
 export { ReportGrid } from './template-schema.mjs';
 export const layoutGuard=()=>Extension.create({name:'reportLayoutGuard',addProseMirrorPlugins(){return [new Plugin({filterTransaction:tr=>!tr.docChanged||isValidLayout(tr.doc.toJSON())})]}});
 export const ReportField=ReportFieldSpec.extend({
-  addOptions(){return {onSelect:()=>{},onMove:()=>{}}},
+  addOptions(){return {onSelect:()=>{},onMove:()=>{},onRestore:()=>{}}},
   addNodeView(){return VueNodeViewRenderer(FieldView)},
 });

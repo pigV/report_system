@@ -2,11 +2,29 @@
 import { shallowRef, watch, nextTick } from 'vue';
 import { YiiEditor } from '@yiitap/vue';
 import { ReportGrid, ReportField, layoutGuard } from './nodes';
-import { fieldsFor, moveField } from '../report-model.mjs';
+import { moveFieldTransaction } from './template-schema.mjs';
+import { fieldsFor } from '../report-model.mjs';
 const props=defineProps({modelValue:Object,selected:String});
 const emit=defineEmits(['update:modelValue','select']);
 const instance=shallowRef(null);
-const extensions=[ReportGrid,ReportField.configure({onSelect:id=>emit('select',id),onMove:(from,to)=>emit('update:modelValue',moveField(instance.value.getJSON(),from,to))}),layoutGuard()];
+let lastMoveAt=0;
+function moveFieldNow(from,to){
+  const editor=instance.value;
+  if(!editor||editor.isDestroyed)return;
+  // Keep a fast drag as one undo step but never merge it with earlier typing.
+  const closeGroup=Date.now()-lastMoveAt>500;
+  const tr=moveFieldTransaction(editor.state,from,to,{closeGroup});
+  if(!tr)return;
+  lastMoveAt=Date.now();
+  editor.view.dispatch(tr);
+}
+function restoreLayout(doc){
+  const editor=instance.value;
+  if(!editor||editor.isDestroyed)return;
+  editor.commands.setContent(doc,{emitUpdate:false});
+  emit('update:modelValue',editor.getJSON());
+}
+const extensions=[ReportGrid,ReportField.configure({onSelect:id=>emit('select',id),onMove:moveFieldNow,onRestore:restoreLayout}),layoutGuard()];
 async function selectField(id){await nextTick();const ed=instance.value;if(!ed||ed.isDestroyed||id!==props.selected)return;ed.state.doc.descendants((n,pos)=>{if(n.type.name==='reportField'&&n.attrs.fieldId===id)ed.commands.setNodeSelection(pos)});}
 function ready(editor){instance.value=editor;editor.unregisterPlugin('trailingNode');selectField(props.selected)}
 watch(()=>props.modelValue,v=>{if(instance.value && JSON.stringify(instance.value.getJSON())!==JSON.stringify(v)){instance.value.commands.setContent(v,{emitUpdate:false});selectField(props.selected)}},{deep:true});
