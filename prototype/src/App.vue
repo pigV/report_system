@@ -117,7 +117,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);cle
 <div class="app-shell" :class="{'report-mode':view==='reports'}">
   <button v-if="mobileSidebar" class="sidebar-backdrop" aria-label="收起导航" @click="mobileSidebar=false"></button>
   <aside class="sidebar" :class="{expanded:mobileSidebar}" aria-label="工作空间导航">
-    <div class="brand"><PhFileText :size="30" weight="bold"/><span>影像文书</span></div>
+    <div class="brand"><PhFileText :size="30" weight="bold"/><span>报告系统</span></div>
     <nav class="main-nav">
       <button aria-label="模板配置" :class="{active:view==='templates'}" :disabled="loading||saving||nativeBusy" @click="chooseView('templates')"><PhFileText :size="21"/><span>模板配置</span></button>
       <button aria-label="自由模板" :class="{active:view==='native'}" :disabled="loading||saving||nativeBusy" @click="chooseView('native')"><PhFileText :size="21"/><span>自由模板</span></button>
@@ -196,3 +196,5 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);cle
   </dialog>
 </div>
 </template>
+
+<style src="./reference-theme.css"></style>
