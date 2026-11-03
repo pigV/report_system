@@ -35,8 +35,10 @@
 .print-body th,.print-body td{border:1px solid #aab8b0;padding:2mm;vertical-align:top;overflow-wrap:anywhere;min-width:0}
 .print-body th{background:#f0f4f1;font-weight:600;text-align:left}
 .print-body td p,.print-body th p{margin:0 0 1mm;font-size:inherit;line-height:1.6;min-height:1.6em}
-.print-body [data-type=column-container]{display:flex;gap:4mm;margin:3mm 0;align-items:start}
-.print-body [data-type=column]{flex:1;min-width:0;margin:0!important;padding:0!important;border:0}
+/* Fixed A4 layout must override Yiitap's narrow-viewport wrapping, which also
+   applies during printing. Keep inline flex-grow values from resized columns. */
+.print-body [data-type=column-container]{display:flex;flex-flow:row nowrap;gap:4mm;margin:3mm 0;align-items:start}
+.print-body [data-type=column-container]>[data-type=column]{flex:1 1 0;min-width:0;margin:0!important;padding:0!important;border:0}
 .print-body [data-type=column]>:first-child{margin-top:0!important}
 .print-body figure[data-report-image]{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2mm;border:0;background:transparent;padding:0;margin:0 0 3mm!important;min-height:0;overflow:visible}
 .print-body figure[data-report-image] img{display:block;max-width:100%;width:auto;height:auto;max-height:var(--print-image-max-height,260px);object-fit:contain;border-radius:0}

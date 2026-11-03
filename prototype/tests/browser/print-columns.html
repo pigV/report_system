@@ -1,0 +1,28 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>打印分栏回归检查</title>
+<body><section class="report-print-overlay"><header class="print-toolbar"><button id="print">打印测试</button><pre id="results" style="max-height:80px;overflow:auto;font-size:11px">准备中</pre></header><div class="print-pages-scroll"><div class="print-pages"></div></div><div class="print-measure"></div></section>
+<script type="module">
+import {buildPrintPages} from '/src/printing/render.mjs';
+import {seedTemplate} from '/src/report-model.mjs';
+import '/src/printing/print.css';
+import '@yiitap/vue/dist/vue.css';
+const row=weights=>({type:'columns',content:weights.map((flexGrow,i)=>({type:'column',attrs:{flexGrow},content:[{type:'reportImage',attrs:{imageId:['cervical','lumbar','knee'][i%3]}}]}))});
+const body={type:'doc',content:[row([1,1]),row([1,1,1]),row([1,1,1,1]),row([1,2]),row([1,1,1]),row([1,1,1])]};
+const snapshot={template:seedTemplate('a'),data:{patient:{name:'打印测试'},exam:{},report:{}},body};
+const root=document.querySelector('.print-pages');
+root.replaceChildren(...await buildPrintPages(document.querySelector('.print-measure'),snapshot));
+document.querySelector('.print-measure').replaceChildren();
+function inspect(){
+ const failures=[]; const rows=[...root.querySelectorAll('[data-type=column-container]')];
+ for(const [index,row] of rows.entries()){
+  const cols=[...row.children],rects=cols.map(c=>c.getBoundingClientRect());
+  if(rects.some(r=>Math.abs(r.y-rects[0].y)>1))failures.push(`row ${index}: columns stacked`);
+  const unit=rects[0].width/Number(cols[0].style.flexGrow||1);
+  if(rects.some((r,i)=>Math.abs(r.width-unit*Number(cols[i].style.flexGrow||1))>1))failures.push(`row ${index}: width ratio changed`);
+ }
+ return {media:matchMedia('print').matches?'print':'screen',pages:root.children.length,rows:rows.length,failures,geometry:rows.map(r=>({display:getComputedStyle(r).display,children:[...r.children].map(c=>({x:c.getBoundingClientRect().x,y:c.getBoundingClientRect().y,w:c.getBoundingClientRect().width}))}))};
+}
+matchMedia('print').addEventListener('change',e=>{if(e.matches)results.textContent=JSON.stringify(inspect(),null,2)});
+const results=document.querySelector('#results');results.textContent=JSON.stringify(inspect(),null,2);
+
+document.querySelector('#print').onclick=()=>window.print();
+</script></body></html>
