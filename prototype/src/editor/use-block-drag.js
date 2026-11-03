@@ -2,7 +2,7 @@ import { ref, onBeforeUnmount } from 'vue';
 import { reorderBlock } from '../free-template/block-drag.mjs';
 
 // Both document editors share Yiitap's six-dot handle. A drag lifts the block
-// itself out of the flow, eases it after the pointer, commits the new position
+// itself out of the flow, follows the pointer vertically, commits the new position
 // live so the surrounding blocks slide with a visible spring, then bounces the
 // block into its slot on drop.
 //
@@ -11,7 +11,6 @@ import { reorderBlock } from '../free-template/block-drag.mjs';
 // dragged block is therefore styled from the editor root (attributes on the root
 // are ignored by ProseMirror) through a generated nth-child rule.
 const THRESHOLD = 4;
-const FOLLOW = 0.28;
 const FLIP_MS = 280;
 const SETTLE_MS = 260;
 const FLIP_EASE = 'cubic-bezier(.22,.7,.3,1)';
@@ -68,7 +67,6 @@ export function useBlockDrag(editor, isDisabled) {
     let translateY = 0;
     let styledIndex = -1;
     let lastBoundary = null;
-    let lastFrame = 0;
     let lastMoveAt = 0;
     let raf = 0;
     let scrollEl = doc.scrollingElement;
@@ -120,8 +118,8 @@ export function useBlockDrag(editor, isDisabled) {
       ].join('');
     };
 
-    // Ease the block toward the pointer while the pointer stays authoritative.
-    const place = (immediate = false) => {
+    // Match the column add control: keep the grab point directly under the pointer.
+    const place = () => {
       if (!started || ed.isDestroyed) return;
       const info = locate();
       if (!info) return;
@@ -129,12 +127,7 @@ export function useBlockDrag(editor, isDisabled) {
       const dom = ed.view.nodeDOM(info.pos);
       if (!dom) return;
       const slotTop = layoutTop(dom);
-      const target = pointer.y - grabOffset - slotTop;
-      const now = win.performance.now();
-      const dt = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
-      lastFrame = now;
-      const easing = immediate ? 1 : 1 - Math.pow(1 - FOLLOW, dt / 16.7);
-      translateY += (target - translateY) * easing;
+      translateY = pointer.y - grabOffset - slotTop;
       ed.view.dom.style.setProperty('--block-drag-y', `${translateY}px`);
       if (!finished) {
         const view = ed.view.dom.getBoundingClientRect();
@@ -218,7 +211,7 @@ export function useBlockDrag(editor, isDisabled) {
       if (tr) ed.view.dispatch(tr);
       const restored = locate();
       if (restored) syncRule(restored.index);
-      place(true);
+      place();
     };
 
     const loop = () => {
@@ -264,7 +257,6 @@ export function useBlockDrag(editor, isDisabled) {
       translateY = 0;
       doc.documentElement.classList.add('sorting');
       scrollEl = scrollAncestor();
-      lastFrame = 0;
       place();
       retarget();
       raf = win.requestAnimationFrame(loop);

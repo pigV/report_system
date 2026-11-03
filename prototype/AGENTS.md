@@ -56,7 +56,7 @@ Template layout fields and the 字段与数据绑定 rows both reorder with the 
 
 ## Approved content-block drag (2026-11-03)
 
-The report body and free-template editors lift the dragged block itself (not a separate ghost): it eases after the pointer up and down with a visible trailing motion, keeps its grab point, and shows a highlighted insertion line in the gap. Blocks between the old and new slots slide with a spring FLIP animation (slight overshoot) while the order commits live. Dropping bounces the block into its slot; Esc, blur, or dropping outside the editor restores the original order. Keep the existing Yiitap six-dot handle, click suppression, focus behavior, and single-step undo for discrete moves. Never revert these blocks to native HTML5 drag-and-drop.
+The report body and free-template editors lift the dragged block itself (not a separate ghost): it follows the pointer's Y position directly, like the add button inside a column, keeps its grab point, and shows a highlighted insertion line in the gap. Blocks between the old and new slots slide with a spring FLIP animation (slight overshoot) while the order commits live. Dropping bounces the block into its slot; Esc, blur, or dropping outside the editor restores the original order. Keep the existing Yiitap six-dot handle, click suppression, focus behavior, and single-step undo for discrete moves. Never revert these blocks to native HTML5 drag-and-drop. The direct vertical follow supersedes the trailing motion originally approved on 2026-11-03 (updated 2026-11-04).
 
 ## Approved column picker (2026-11-03)
 
