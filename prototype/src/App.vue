@@ -205,7 +205,3 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
 </div>
 <ReportPrintPreview v-if="printSnapshot" :snapshot="printSnapshot" @close="printSnapshot=null"/>
 </template>
-
-<style src="./reference-theme.css"></style>
-
-<style src="./report-workbench.css"></style>
