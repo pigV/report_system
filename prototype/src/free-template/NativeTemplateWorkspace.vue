@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
-import { PhArrowsOutSimple, PhX, PhDatabase, PhPlus, PhArrowCounterClockwise, PhCircleNotch, PhWarningCircle, PhSlidersHorizontal, PhCheckCircle } from '@phosphor-icons/vue';
+import { PhArrowsOutSimple, PhX, PhPlus, PhArrowCounterClockwise, PhCircleNotch, PhWarningCircle } from '@phosphor-icons/vue';
 import NativeEditor from './NativeEditor.vue';
 import NativeDocument from './NativeDocument.vue';
 import { pathOptions, hospitals, clone } from '../report-model.mjs';

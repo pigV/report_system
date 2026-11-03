@@ -97,7 +97,6 @@ html body .app-shell .native-preview {
 }
 
 html body .app-shell .config-panel,
-html body .app-shell .clinical-card,
 html body .app-shell .native-config {
   background: #fff;
   border-color: #dedede;
@@ -111,29 +110,6 @@ html body .app-shell .native-tabs > button[aria-selected=true]:after {
 html body .app-shell .template-editor .field-card.chosen {
   background: #f2f7f7;
   border-color: #83aaab;
-}
-
-html body .app-shell .history-entry.active .history-row,
-html body .app-shell .common-template-list > button.active {
-  background: #edf4f4;
-  border-left-color: #6b9b9c;
-}
-
-html body .app-shell .history-entry.active .timeline-dot {
-  background: #6b9b9c;
-  box-shadow: 0 0 0 4px #edf4f4;
-}
-
-html body .app-shell .template-filters button.active {
-  background: #edf4f4;
-  border-color: #b8d1d1;
-  color: #426f70;
-}
-
-html body .app-shell .template-filters button:hover,
-html body .app-shell .common-template-list > button:hover,
-html body .app-shell .history-row:hover {
-  background: #f1f5f5;
 }
 
 html body .app-shell .native-workspace {

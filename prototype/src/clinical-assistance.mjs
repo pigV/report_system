@@ -18,16 +18,10 @@ const templates=[
   {id:'abdomen-us',category:'腹部',name:'腹部超声常规',keywords:'超声 肝胆胰脾',findings:'肝脏：\n胆囊：\n胰腺：\n脾脏：',impression:'请根据本次检查填写超声提示。'},
   {id:'bone-xray',category:'骨骼',name:'骨关节 X 线描述',keywords:'骨折 关节 DR',findings:'检查部位：\n骨质及关节间隙：\n周围软组织：',impression:'请根据本次影像填写诊断意见。'},
 ];
-export const templateCategories=['全部','胸部','腹部','骨骼'];
 export function filterTemplates(query='',category='全部'){
   const term=query.trim().toLocaleLowerCase();
   return templates.filter(t=>(category==='全部'||t.category===category) && `${t.name} ${t.keywords}`.toLocaleLowerCase().includes(term)).map(t=>({...t}));
 }
-export function templateBody(entry){
-  const section=(title,text)=>[{type:'heading',attrs:{level:2},content:[{type:'text',text:title}]},...text.split('\n').map(text=>({type:'paragraph',...(text?{content:[{type:'text',text}]}:{})}))];
-  return {type:'doc',content:[...section('影像所见',entry.findings),...section('诊断意见',entry.impression)]};
-}
-
 const personalKey=(hospital,doctor)=>`report-demo:personal-templates:v1:${hospital}:${doctor}`;
 export function loadPersonalTemplates(storage,hospital,doctor){
   const raw=storage.getItem(personalKey(hospital,doctor));

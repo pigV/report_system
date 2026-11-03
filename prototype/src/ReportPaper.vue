@@ -2,7 +2,7 @@
 import {ref} from 'vue';
 import { fieldsFor, readPath, reportHospitalName } from './report-model.mjs';
 import BodyEditor from './editor/BodyEditor.vue';
-const props=defineProps({template:Object,data:Object,showData:{type:Boolean,default:true},doctor:Boolean,readonlyBody:Boolean,body:Object,bodyKey:String,selected:String,scope:Object,selectedImage:String});
+const props=defineProps({template:Object,data:Object,showData:{type:Boolean,default:true},doctor:Boolean,readonlyBody:Boolean,body:Object,bodyKey:String,scope:Object,selectedImage:String});
 const emit=defineEmits(['updateBody']);
 const bodyEditor=ref(null);
 defineExpose({insertTemplate:body=>bodyEditor.value?.insertTemplate(body)??false});

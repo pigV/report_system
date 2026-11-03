@@ -1,13 +1,13 @@
 <script setup>
 import { computed, ref, shallowRef, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
-import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhEye, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash, PhPrinter, PhSquaresFour, PhImage, PhFolder, PhStar, PhMagnifyingGlass, PhWarning, PhExport } from '@phosphor-icons/vue';
+import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash, PhPrinter, PhSquaresFour, PhImage, PhFolder, PhStar, PhMagnifyingGlass, PhWarning, PhExport } from '@phosphor-icons/vue';
 import TemplateEditor from './editor/TemplateEditor.vue';
 import ReportPaper from './ReportPaper.vue';
 import ReportPrintPreview from './ReportPrintPreview.vue';
 import ClinicalSidebar from './ClinicalSidebar.vue';
 import EvidenceSidebar from './EvidenceSidebar.vue';
 import NativeTemplateWorkspace from './free-template/NativeTemplateWorkspace.vue';
-import { hospitals, fieldsFor, readPath, pathOptions, validateTemplate, clone, moveField, emptyBody, addTemplateField, removeTemplateField, reportHospitalName, normalizeBindings, addBindingField, removeBindingField, moveBindingField } from './report-model.mjs';
+import { hospitals, fieldsFor, pathOptions, validateTemplate, clone, moveField, emptyBody, addTemplateField, removeTemplateField, reportHospitalName, normalizeBindings, addBindingField, removeBindingField, moveBindingField } from './report-model.mjs';
 import { mergeSavedTemplate, fieldColumn, applyRegionEdit } from './editor-state.mjs';
 import { startPointerSort } from './editor/pointer-sort.js';
 const hospital=ref('a'), section=ref('header'), view=ref(location.hash==='#native-templates'?'native':location.hash==='#templates'?'templates':'reports'), template=ref(null), baseline=ref(''), selected=ref('patientName');
@@ -211,7 +211,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
             </button>
           </div>
           <div v-if="view==='templates'" class="preview-toolbar"><h2>整页预览</h2><div class="preview-options"><span>模拟数据</span><button class="toggle" role="switch" aria-label="显示模拟数据" :aria-checked="showData" :class="{on:showData}" @click="showData=!showData"><span></span></button><div class="select-wrap zoom-select"><select aria-label="预览缩放" v-model="zoom"><option value="100">100%</option><option value="85">85%</option></select><PhCaretDown :size="12"/></div><button class="icon-button expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="17"/></button></div></div>
-          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><button v-if="view==='reports'" class="icon-button report-expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="19"/></button><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" :selected="selected" @update-body="v=>body=v"/></div>
+          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><button v-if="view==='reports'" class="icon-button report-expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="19"/></button><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" @update-body="v=>body=v"/></div>
           <div class="preview-footnote"><span><PhDatabase :size="13"/>仅使用模拟数据</span><span>{{view==='templates'?'布局修改实时呈现':'正文支持自由编辑'}}</span></div>
         </section>
         <EvidenceSidebar v-if="view==='reports'" :hospital="hospital" :case-id="caseId" :data="paperData" :disabled="saving" :selected-image="selectedImage" @insert="insertTemplate" @select-image="id=>selectedImage=id"/>

@@ -7,7 +7,7 @@ import { businessSuggestion } from './suggestion.js';
 import { PhArrowCounterClockwise, PhArrowClockwise, PhTextB, PhTextItalic, PhTextUnderline, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhColumns, PhMinus, PhDatabase, PhDotsSixVertical } from '@phosphor-icons/vue';
 import { nativeExtensions } from './model.mjs';
 const props=defineProps({content:Object,fields:Array,disabled:Boolean,region:String});
-const emit=defineEmits(['update','bindings']);
+const emit=defineEmits(['update']);
 const editor=shallowRef(null),format=ref('paragraph'), revision=ref(0);
 const suggestion=businessSuggestion(()=>props.fields);
 const extensions=[...nativeExtensions(),{name:'OSlash',configure:{suggestion}},{name:'OSlashZh',configure:{suggestion}}];
