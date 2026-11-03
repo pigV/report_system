@@ -1,5 +1,6 @@
 import { ref, onBeforeUnmount } from 'vue';
 import { reorderBlock } from '../free-template/block-drag.mjs';
+import { createBlockHoverDwell } from './block-hover-dwell.mjs';
 
 // Both document editors share Yiitap's six-dot handle. A drag lifts the block
 // itself out of the flow, follows the pointer vertically, commits the new position
@@ -16,6 +17,7 @@ const SETTLE_MS = 260;
 const FLIP_EASE = 'cubic-bezier(.22,.7,.3,1)';
 const SCROLL_EDGE = 44;
 const SCROLL_STEP = 12;
+const HOVER_DWELL_MS = 140;
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 let dragSequence = 0;
 
@@ -24,9 +26,12 @@ export function useBlockDrag(editor, isDisabled) {
   const menuOffsets = new WeakMap();
   let stopDrag = () => {};
   let suppressClick = false;
+  let hoverMenu = null;
+  let hoverEditor = null;
+  let anchorTop = null;
 
-  // Yiitap repositions its side menu only on mouseover. Move the menu between
-  // those events so its six-dot handle tracks Y like the add control in columns.
+  // Yiitap reanchors the menu on mouseover. Hold it on the current block until
+  // the pointer has stayed over a different block long enough to select it.
   function visibleMenu(ed, y) {
     const doc = ed.view.dom.ownerDocument;
     const view = ed.view.dom.getBoundingClientRect();
@@ -43,23 +48,53 @@ export function useBlockDrag(editor, isDisabled) {
       })[0] ?? null;
   }
 
-  function followMenu(ed, menu, y, grabOffset) {
+  function positionMenu(ed, menu, top) {
     if (!menu?.isConnected) return;
     const rect = menu.getBoundingClientRect();
     const view = ed.view.dom.getBoundingClientRect();
     const previous = menuOffsets.get(menu) ?? 0;
-    const desiredTop = Math.max(view.top, Math.min(y - grabOffset, view.bottom - rect.height));
+    const desiredTop = Math.max(view.top, Math.min(top, view.bottom - rect.height));
     const offset = desiredTop - (rect.top - previous);
     menu.style.transform = `translateY(${offset}px)`;
     menuOffsets.set(menu, offset);
+  }
+
+  function blockTop(dom, menu) {
+    const rect = dom.getBoundingClientRect();
+    return rect.top + Math.min(rect.height, 26) / 2 - menu.getBoundingClientRect().height / 2;
+  }
+
+  const hoverDwell = createBlockHoverDwell(dom => {
+    if (!hoverEditor || !hoverMenu || !dom.isConnected) return;
+    anchorTop = blockTop(dom, hoverMenu);
+    positionMenu(hoverEditor, hoverMenu, anchorTop);
+  }, {delay:HOVER_DWELL_MS});
+
+  function trackBlock(ed, menu, y, sourceNode=null, originalRect=null) {
+    if (!menu) return;
+    if (menu !== hoverMenu) {
+      hoverDwell.reset();
+      hoverMenu = menu;
+      anchorTop = null;
+    }
+    hoverEditor = ed;
+    const items = blocks().filter(item => item.node !== sourceNode
+      || (originalRect && y >= originalRect.top && y <= originalRect.bottom));
+    const hovered = items.find(item => y >= item.rect.top && y <= item.rect.bottom)
+      ?? [...items].sort((a,b) => Math.abs((a.rect.top+a.rect.bottom)/2-y)-Math.abs((b.rect.top+b.rect.bottom)/2-y))[0];
+    if (!hovered) return;
+    hoverDwell.aim(hovered.dom);
+    if (anchorTop !== null) positionMenu(ed, menu, anchorTop);
   }
 
   function handleHover(event) {
     const ed = editor.value;
     if (!ed || ed.isDestroyed || isDisabled() || !ed.view.dom.contains(event.target)) return;
     const menu = visibleMenu(ed, event.clientY);
-    if (menu) followMenu(ed, menu, event.clientY, menu.getBoundingClientRect().height / 2);
+    trackBlock(ed, menu, event.clientY);
   }
+
+  function handleLeave() { hoverDwell.leave(); }
 
   function blocks() {
     const ed = editor.value;
@@ -92,7 +127,7 @@ export function useBlockDrag(editor, isDisabled) {
     const doc = event.target.ownerDocument;
     const win = doc.defaultView ?? window;
     const dragMenu = handle.closest('.side-menu');
-    const menuGrabOffset = dragMenu ? event.clientY - dragMenu.getBoundingClientRect().top : 0;
+    hoverDwell.leave();
     const dragToken = `drag-${++dragSequence}`;
     const sourceNode = source.node;
     const originalIndex = items.indexOf(source);
@@ -261,7 +296,7 @@ export function useBlockDrag(editor, isDisabled) {
       if (pointer.y < top + SCROLL_EDGE) step = -SCROLL_STEP;
       else if (pointer.y > bottom - SCROLL_EDGE) step = SCROLL_STEP;
       if (step) scrollEl.scrollBy(0, step);
-      if (dragMenu) followMenu(ed, dragMenu, pointer.y, menuGrabOffset);
+      if (dragMenu) trackBlock(ed, dragMenu, pointer.y, sourceNode, source.rect);
       place();
       retarget();
       raf = win.requestAnimationFrame(loop);
@@ -341,7 +376,7 @@ export function useBlockDrag(editor, isDisabled) {
 
     const move = e => {
       pointer.y = e.clientY;
-      if (dragMenu) followMenu(ed, dragMenu, e.clientY, menuGrabOffset);
+      if (dragMenu) trackBlock(ed, dragMenu, e.clientY, sourceNode, source.rect);
       if (!started) {
         if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return;
         begin();
@@ -377,7 +412,11 @@ export function useBlockDrag(editor, isDisabled) {
     }
   }
 
-  onBeforeUnmount(() => stopDrag());
+  onBeforeUnmount(() => {
+    stopDrag();
+    hoverDwell.reset();
+    if (hoverMenu) hoverMenu.style.transform = '';
+  });
 
-  return { dropLine, startDrag, handleClick, handleHover };
+  return { dropLine, startDrag, handleClick, handleHover, handleLeave };
 }

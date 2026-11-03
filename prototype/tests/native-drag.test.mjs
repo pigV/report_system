@@ -6,6 +6,32 @@ import { nativeSchema } from '../src/free-template/model.mjs';
 import { reorderBlock } from '../src/free-template/block-drag.mjs';
 import { columnInsertTarget, insertColumnSlash } from '../src/editor/column-insert.mjs';
 import { bodySchema } from '../src/editor/body-schema.mjs';
+import { createBlockHoverDwell } from '../src/editor/block-hover-dwell.mjs';
+
+test('drag handle stays on a block until the next block has been hovered briefly', () => {
+  const timers=[];
+  const schedule=(callback,delay)=>{const timer={callback,delay,cancelled:false};timers.push(timer);return timer};
+  const cancel=timer=>{timer.cancelled=true};
+  const selected=[];
+  const hover=createBlockHoverDwell(block=>selected.push(block),{delay:140,schedule,cancel});
+  const first={},second={},third={};
+  assert.equal(hover.aim(first),first);
+  assert.equal(hover.aim(second),first);
+  assert.equal(hover.aim(second),first,'movement within the candidate does not restart the dwell');
+  assert.equal(timers.length,1);
+  assert.equal(timers[0].delay,140);
+  assert.equal(hover.aim(third),first);
+  assert.equal(timers[0].cancelled,true);
+  timers[1].callback();
+  assert.equal(hover.current(),third);
+  assert.deepEqual(selected,[first,third]);
+  hover.aim(second);
+  hover.leave();
+  assert.equal(timers[2].cancelled,true);
+  assert.equal(hover.current(),third);
+  hover.reset();
+  assert.equal(hover.current(),null);
+});
 
 test('block reorder preserves field identity, nested content, and single-step undo', () => {
   const doc = nativeSchema.nodeFromJSON({type:'doc',content:[{type:'heading',attrs:{level:2},content:[{type:'text',text:'标题'}]},{type:'paragraph',content:[{type:'businessField',attrs:{fieldId:'patientName',label:'患者姓名'}}]},{type:'paragraph',content:[{type:'text',text:'末段'}]}]});

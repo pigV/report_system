@@ -19,11 +19,11 @@ function setFormat(value){value==='paragraph'?run('setParagraph'):run('setHeadin
 function insertMenu(){if(!editor.value)return;editor.value.chain().focus().insertContent('/').run()}
 function insertField(f){run('insertContent',{type:'businessField',attrs:{fieldId:f.id,label:f.label}})}
 defineExpose({insertField});
-const {dropLine,startDrag,handleClick,handleHover}=useBlockDrag(editor,()=>props.disabled);
+const {dropLine,startDrag,handleClick,handleHover,handleLeave}=useBlockDrag(editor,()=>props.disabled);
 onBeforeUnmount(()=>{if(editor.value&&!editor.value.isDestroyed)editor.value.commands.blur()});
 </script>
 <template>
-<div @mousedown.capture="startDrag" @mousemove="handleHover" @click.capture="handleClick" class="native-editor" :class="{disabled}" :aria-busy="disabled">
+<div @mousedown.capture="startDrag" @mousemove="handleHover" @mouseleave="handleLeave" @click.capture="handleClick" class="native-editor" :class="{disabled}" :aria-busy="disabled">
   <div class="native-toolbar" role="toolbar" aria-label="自由文档格式">
     <button title="撤销" aria-label="自由编辑撤销" :disabled="disabled" @mousedown.prevent @click="run('undo')"><PhArrowCounterClockwise/></button>
     <button title="重做" aria-label="自由编辑重做" :disabled="disabled" @mousedown.prevent @click="run('redo')"><PhArrowClockwise/></button><span class="native-tool-separator"></span>
