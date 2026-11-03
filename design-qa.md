@@ -45,6 +45,16 @@
 
 final result: passed
 
+### 2026-11-04 follow-up — Delete selected column layouts
+
+Report body and free-template editors share a column selection/Delete extension. A 5px top/bottom selection area and teal outline make layout selection visible. Native add/resize controls between columns remain available. Text/media clicks retain normal editing; Delete only handles a selected column or column container. Removing the last individual column also removes its wrapper.
+
+Browser checks at 1280 × 720 passed in both report body and free-template header: click the top edge, verify the column-container selection, press Delete (container count 1 → 0), undo once (0 → 1). No error-level console messages. Screenshot: `designs/column-delete-selected.png`.
+
+82/82 tests and Vite/Sites build preparation passed. Tests cover both schemas, surrounding text, single-column removal, last-column cleanup, whole-container undo, cursor/text-selection fallthrough and read-only click protection.
+
+final result: passed
+
 ### 2026-11-04 follow-up — reuse the current column
 
 User correction: insert image blocks directly into the current column when the menu anchor is inside a column. The footer now says 插入当前栏; outside columns it continues to show 将生成 N 列.

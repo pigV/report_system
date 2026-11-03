@@ -2,6 +2,7 @@ import { Node, getSchema, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { createExtensionList } from '@yiitap/vue';
 import { fieldsFor, reportHospitalName, pathOptions, readPath, validFieldId, hospitals } from '../report-model.mjs';
+import {ColumnDeletion} from '../editor/column-delete.mjs';
 
 export const BusinessField=Node.create({
   name:'businessField',group:'inline',inline:true,atom:true,selectable:true,draggable:true,
@@ -13,7 +14,7 @@ export const BusinessField=Node.create({
   },
 });
 export function nativeExtensions(resolve=null){
-  return [...createExtensionList(['Table','OMultiColumn','TextAlign','TextStyle','Color','OHorizontalRule','OBlockquote','OShortcut']),BusinessField.configure({resolve})];
+  return [...createExtensionList(['Table','OMultiColumn','TextAlign','TextStyle','Color','OHorizontalRule','OBlockquote','OShortcut']),ColumnDeletion,BusinessField.configure({resolve})];
 }
 export function nativeSchemaFor(resolve=null){return getSchema([StarterKit.configure({codeBlock:false,horizontalRule:false,link:false,blockquote:false,trailingNode:false}),...nativeExtensions(resolve)])}
 export const nativeSchema=nativeSchemaFor();
