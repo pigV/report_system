@@ -63,7 +63,9 @@ export async function buildPrintPages(stage,snapshot,signal){
   const blocks=[...body,...(fieldsFor(snapshot.template.footer).length?[{type:'printSignature'}]:[])];
   content.append(renderBlocks(doc,blocks,snapshot));
   await waitForPrintResources(stage,signal);
-  const top=content.getBoundingClientRect().top,bottom=number.getBoundingClientRect().top-12;
+  // The flow footer reserves exactly the space used by the anchored output footer.
+  const top=content.getBoundingClientRect().top;
+  const bottom=sheet.getBoundingClientRect().bottom-parseFloat(doc.defaultView.getComputedStyle(sheet).paddingBottom);
   const capacity=bottom-top;
   if(capacity<60)throw Error('表头过高，A4 页面没有足够的正文空间，请减少表头字段或文字');
   sheet.style.setProperty('--print-image-max-height',`${Math.min(260,capacity-40)}px`);
@@ -77,6 +79,9 @@ export async function buildPrintPages(stage,snapshot,signal){
     const result=element(doc,'article','report-print-page');result.style.setProperty('--print-image-max-height',sheet.style.getPropertyValue('--print-image-max-height'));
     result.setAttribute('aria-label',`第 ${index+1} 页，共 ${pages.length} 页`);
     const main=element(doc,'main','print-body');main.append(renderBlocks(doc,page,snapshot));
-    result.append(renderHeader(doc,snapshot),main,element(doc,'div','print-page-number',`第 ${index+1} 页 / 共 ${pages.length} 页`));return result;
+    const footer=main.querySelector(':scope > .print-signature');
+    result.append(renderHeader(doc,snapshot),main);
+    if(footer)result.append(footer);
+    result.append(element(doc,'div','print-page-number',`第 ${index+1} 页 / 共 ${pages.length} 页`));return result;
   });
 }

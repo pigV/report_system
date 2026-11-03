@@ -37,3 +37,5 @@ This supersedes the older stacked doctor-workspace layout and insertion behavior
 ## Approved report printing (2026-11-03)
 
 Report demo prints the current editor content, including unsaved edits, without saving it. Show A4 portrait paginated preview before system printing/PDF. Repeat configured hospital/report heading and patient header fields on every page; signature/footer fields appear only on the last page, with page X / Y numbering on all pages. Preview and print share pagination. Long text, lists, tables (repeat headers; split oversized rows), and uneven native columns must continue without clipping or text loss. Keep image rows together where possible and scale images proportionally. Exclude editor controls and empty image prompts. Wait for fonts/images and surface preparation errors instead of offering incomplete printing.
+
+Report printing footer alignment (2026-11-03): final-page signature fields are always bottom-aligned above the page number, including short reports. Reserve their actual wrapped height and a clear gap during pagination; never overlap body content. Use a fine separator and tidy, restrained footer typography.
