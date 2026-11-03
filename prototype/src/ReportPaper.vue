@@ -2,7 +2,7 @@
 import {ref} from 'vue';
 import { fieldsFor, readPath, reportHospitalName } from './report-model.mjs';
 import BodyEditor from './editor/BodyEditor.vue';
-const props=defineProps({template:Object,data:Object,showData:{type:Boolean,default:true},doctor:Boolean,readonlyBody:Boolean,body:Object,bodyKey:String,selected:String});
+const props=defineProps({template:Object,data:Object,showData:{type:Boolean,default:true},doctor:Boolean,readonlyBody:Boolean,body:Object,bodyKey:String,selected:String,scope:Object,selectedImage:String});
 const emit=defineEmits(['updateBody']);
 const bodyEditor=ref(null);
 defineExpose({insertTemplate:body=>bodyEditor.value?.insertTemplate(body)??false});
@@ -19,7 +19,7 @@ function display(field){const path=props.template.bindings?.[field.attrs.fieldId
     </div>
   </div>
   <div class="paper-body">
-    <BodyEditor v-if="doctor||readonlyBody" ref="bodyEditor" :key="bodyKey" :content="body" :readonly="readonlyBody" @update="v=>emit('updateBody',v)" />
+    <BodyEditor v-if="doctor||readonlyBody" ref="bodyEditor" :key="bodyKey" :content="body" :readonly="readonlyBody" :scope="scope" :selected-image="selectedImage" @update="v=>emit('updateBody',v)" />
     <div v-else class="empty-body"><span>报告正文</span><p>医生自由编辑区域</p></div>
   </div>
   <footer class="paper-fields paper-footer" :class="{bordered:template.footer.content[0].attrs.borders}" :style="gridStyle('footer')">

@@ -4,6 +4,7 @@ import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFlo
 import TemplateEditor from './editor/TemplateEditor.vue';
 import ReportPaper from './ReportPaper.vue';
 import ClinicalSidebar from './ClinicalSidebar.vue';
+import EvidenceSidebar from './EvidenceSidebar.vue';
 import NativeTemplateWorkspace from './free-template/NativeTemplateWorkspace.vue';
 import { hospitals, fieldsFor, readPath, pathOptions, validateTemplate, clone, moveField, emptyBody, addTemplateField, removeTemplateField, reportHospitalName, normalizeBindings, addBindingField, removeBindingField, moveBindingField } from './report-model.mjs';
 import { mergeSavedTemplate, fieldColumn, applyRegionEdit } from './editor-state.mjs';
@@ -11,11 +12,12 @@ const hospital=ref('a'), section=ref('header'), view=ref(location.hash==='#nativ
 const data=ref(null), cases=ref([]), caseId=ref(''), report=ref(null), body=ref(emptyBody()), bodyBaseline=ref(''), bodyKey=ref(0);
 const loading=ref(true), saving=ref(false), error=ref(''), showData=ref(true), zoom=ref('100'), toast=ref(''), advanced=ref(false), mobileSidebar=ref(false);
 const modal=ref(''), dialog=ref(null), pendingAction=shallowRef(null), editorRef=ref(null);
-const reportPaper=ref(null);
+const reportPaper=ref(null),personalRef=ref(null),personalDirty=ref(false),selectedImage=ref('');
+watch([hospital,caseId],()=>selectedImage.value='');
 const nativeRef=ref(null),nativeDirty=ref(false),nativeBusy=ref(false),nativeError=ref('');
 function insertTemplate(content){
   if(loading.value||saving.value||view.value!=='reports')return;
-  if(reportPaper.value?.insertTemplate(content))notify('模板已插入，可继续编辑或撤销');
+  if(reportPaper.value?.insertTemplate(content))notify('描述和诊断已替换，可撤销；其他内容保留');
   else error.value='正文编辑器尚未就绪，请稍后重试';
 }
 let loadVersion=0,toastTimer;
@@ -61,7 +63,7 @@ async function load(){
     selected.value=fieldsFor(t[section.value])[0]?.attrs.fieldId??'';
   } catch(e){if(token===loadVersion)error.value=e.message} finally {if(token===loadVersion)loading.value=false}
 }
-function guard(action){if(saving.value||nativeBusy.value)return;if(isDirty.value){pendingAction.value=action;modal.value='unsaved'}else action()}
+function guard(action){if(saving.value||nativeBusy.value)return;if(isDirty.value||personalDirty.value){pendingAction.value=action;modal.value='unsaved'}else action()}
 function chooseHospital(id){if(id===hospital.value)return;guard(()=>{hospital.value=id;caseId.value='';mobileSidebar.value=false;load()})}
 function chooseView(id){if(id===view.value)return;guard(()=>{view.value=id;history.replaceState(null,'',id==='native'?'#native-templates':location.pathname);showData.value=true;mobileSidebar.value=false;load()})}
 function chooseCase(e){const id=e.target.value;e.target.value=caseId.value;if(id===caseId.value)return;guard(()=>{caseId.value=id;load()})}
@@ -105,10 +107,10 @@ async function save(){
   } catch(e){error.value=e.message;return false} finally {saving.value=false}
 }
 function closeModal(){if(nativeBusy.value||saving.value)return;modal.value='';pendingAction.value=null}
-async function confirmSwitch(saveFirst){if(nativeBusy.value||saving.value)return;if(saveFirst&&!await save())return;const action=pendingAction.value;closeModal();action?.()}
+async function confirmSwitch(saveFirst){if(nativeBusy.value||saving.value)return;if(saveFirst){if(personalDirty.value&&!personalRef.value?.save())return;if(isDirty.value&&!await save())return;}const action=pendingAction.value;closeModal();action?.()}
 function reset(){template.value=JSON.parse(baseline.value);selected.value=fieldsFor(template.value[section.value])[0]?.attrs.fieldId??'';closeModal();notify('已恢复到上次保存的配置')}
 watch(modal,async value=>{await nextTick();if(value)dialog.value?.showModal();else dialog.value?.close()});
-function beforeUnload(e){if(isDirty.value){e.preventDefault();e.returnValue=''}}
+function beforeUnload(e){if(isDirty.value||personalDirty.value){e.preventDefault();e.returnValue=''}}
 onMounted(()=>{load();window.addEventListener('beforeunload',beforeUnload)});
 onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);clearTimeout(toastTimer)});
 </script>
@@ -178,18 +180,20 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);cle
           </div>
           <div class="config-bottom"><span><PhCheckCircle :size="13"/>{{hospitalName}}独立配置</span><span>Yiitap 编辑器</span></div>
         </section>
-        <ClinicalSidebar v-else :hospital="hospital" :case-id="caseId" :data="paperData" :cases="cases" :disabled="saving" @choose-case="chooseCase" @insert="insertTemplate"/>
+        <ClinicalSidebar v-else ref="personalRef" :hospital="hospital" :disabled="saving" @insert="insertTemplate" @dirty="v=>personalDirty=v" @notify="notify"/>
         <section class="preview-panel" aria-label="实时预览">
+          <div class="report-patient-bar" v-if="view==='reports'"><span><strong>{{paperData?.patient?.name}}</strong> {{paperData?.patient?.gender}} · {{paperData?.patient?.age}} · {{paperData?.patient?.no}}</span><select aria-label="选择模拟病例" :value="caseId" :disabled="saving" @change="chooseCase"><option v-for="item in cases" :value="item.id" :key="item.id">{{item.label}}</option></select></div>
           <div class="preview-toolbar"><h2>{{view==='templates'?'整页预览':'报告编辑'}}</h2><div class="preview-options"><template v-if="view==='templates'"><span>模拟数据</span><button class="toggle" role="switch" aria-label="显示模拟数据" :aria-checked="showData" :class="{on:showData}" @click="showData=!showData"><span></span></button><div class="select-wrap zoom-select"><select aria-label="预览缩放" v-model="zoom"><option value="100">100%</option><option value="85">85%</option></select><PhCaretDown :size="12"/></div></template><button class="icon-button expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="17"/></button></div></div>
-          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" :selected="selected" @update-body="v=>body=v"/></div>
+          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" :selected="selected" @update-body="v=>body=v"/></div>
           <div class="preview-footnote"><span><PhDatabase :size="13"/>仅使用模拟数据</span><span>{{view==='templates'?'布局修改实时呈现':'正文支持自由编辑'}}</span></div>
         </section>
+        <EvidenceSidebar v-if="view==='reports'" :hospital="hospital" :case-id="caseId" :data="paperData" :disabled="saving" :selected-image="selectedImage" @insert="insertTemplate" @select-image="id=>selectedImage=id"/>
       </div>
     </section>
   </main>
   <Transition name="toast"><div v-if="toast" class="toast-message" role="status"><PhCheckCircle :size="20" weight="fill"/>{{toast}}</div></Transition>
   <dialog ref="dialog" :class="['app-dialog',modal==='preview'?'preview-dialog':'',modal==='json'?'json-dialog':'']" @cancel.prevent="closeModal" @click="e=>{if(e.target===dialog)closeModal()}">
-    <template v-if="modal==='unsaved'"><div class="dialog-heading"><h2>保存这次更改？</h2><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><p>当前{{view!=='reports'?'模板配置':'报告正文'}}有未保存的更改。离开前，你可以保存或放弃更改。</p><div v-if="view==='native'?nativeError:error" class="dialog-error" role="alert">{{view==='native'?nativeError:error}}</div><div class="dialog-actions"><button class="secondary-button" :disabled="saving||nativeBusy" @click="closeModal">继续编辑</button><button class="secondary-button" :disabled="saving||nativeBusy" @click="confirmSwitch(false)">放弃更改</button><button class="primary-button" :disabled="saving||nativeBusy" @click="confirmSwitch(true)">{{saving||nativeBusy?'保存中…':'保存并切换'}}</button></div></template>
+    <template v-if="modal==='unsaved'"><div class="dialog-heading"><h2>保存这次更改？</h2><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><p>当前{{view!=='reports'?'模板配置':'报告正文或个人模板'}}有未保存的更改。离开前，你可以保存或放弃更改。</p><div v-if="view==='native'?nativeError:error" class="dialog-error" role="alert">{{view==='native'?nativeError:error}}</div><div class="dialog-actions"><button class="secondary-button" :disabled="saving||nativeBusy" @click="closeModal">继续编辑</button><button class="secondary-button" :disabled="saving||nativeBusy" @click="confirmSwitch(false)">放弃更改</button><button class="primary-button" :disabled="saving||nativeBusy" @click="confirmSwitch(true)">{{saving||nativeBusy?'保存中…':'保存并切换'}}</button></div></template>
     <template v-if="modal==='reset'"><div class="dialog-heading"><h2>恢复已保存的配置？</h2><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><p>将放弃本次未保存的修改，恢复到该医院上次保存的模板。</p><div class="dialog-actions"><button class="secondary-button" @click="closeModal">取消</button><button class="primary-button" @click="reset">恢复配置</button></div></template>
     <template v-if="modal==='json'"><div class="dialog-heading"><div><h2>模板文档</h2><p>Tiptap JSON · 当前编辑内容</p></div><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><pre>{{JSON.stringify(template,null,2)}}</pre></template>
     <template v-if="modal==='preview'"><div class="dialog-heading"><div><h2>{{hospitalName}} · 整页预览</h2><p>{{showData?'模拟数据展示':'字段占位符展示'}}</p></div><button class="icon-button" aria-label="关闭预览" @click="closeModal"><PhX :size="20"/></button></div><ReportPaper :template="paperTemplate" :data="paperData" :show-data="showData" :body="body" :readonly-body="view==='reports'"/></template>
@@ -198,3 +202,5 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);cle
 </template>
 
 <style src="./reference-theme.css"></style>
+
+<style src="./report-workbench.css"></style>

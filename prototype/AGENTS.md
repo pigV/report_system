@@ -29,3 +29,7 @@ The report body has no fixed top format toolbar or “报告正文” label stri
 ## Overall color direction (2026-11-03)
 
 Use `designs/20261103-110624.jpg` as the overall color reference: charcoal toolbar, light-gray navigation and work surfaces, white cards and report paper, and restrained teal accents. Preserve the existing layouts, functionality, and meaningful status colors.
+
+## Approved report workbench (2026-11-03)
+
+This supersedes the older stacked doctor-workspace layout and insertion behavior. Report demo uses the reference image's three-column arrangement: personal templates left, native Notion-style Yiitap body editor center, key images and patient-scoped history right. Personal templates allow editing, appending, separate saving and citation. History allows temporary editing/appending and citation but never saving back. Citation REPLACES the report's description and diagnosis, preserves other blocks (especially images, columns and tables), and is undoable. Keep semantic section identifiers on native blocks. Use native editor columns with droppable image blocks, supporting two/three/four/six and custom image layouts; persist them with reports and render previews read-only. All data/images are simulated. Personal template persistence is local to the browser and scoped to hospital/mock doctor.
