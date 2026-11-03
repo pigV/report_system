@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {EditorState} from '@tiptap/pm/state';
 import {history,undo} from '@tiptap/pm/history';
 import {bodySchema} from '../src/editor/body-schema.mjs';
-import {keyImageColumns,insertKeyImagesTransaction} from '../src/editor/key-image-insert.mjs';
+import {keyImageColumns,insertKeyImagesTransaction,isKeyImageInsertionInColumn} from '../src/editor/key-image-insert.mjs';
 import {bodyMenuItems,nativeMenuItems} from '../src/free-template/menu.mjs';
 import {openStore} from '../server/store.mjs';
 
@@ -49,7 +49,27 @@ test('inserting at the start of a nonempty column paragraph preserves its conten
   assert.ok(state.doc.textContent.includes('相邻栏'));
   const images=[];state.doc.descendants(node=>{if(node.type.name==='reportImage')images.push(node.attrs.imageId)});
   assert.deepEqual(images,['lumbar','knee']);
+  let columnRows=0;state.doc.descendants(node=>{if(node.type.name==='columns')columnRows++});
+  assert.equal(columnRows,1,'reuse the existing column instead of nesting another column row');
+  assert.equal(state.doc.firstChild.child(1).textContent,'相邻栏');
   assert.equal(insertKeyImagesTransaction(state,{from:3,to:3},[]),null);
+});
+test('one or multiple images insert directly into the current empty column and undo together',()=>{
+  for(const ids of [['knee'],['knee','lumbar'],['knee','lumbar','cervical']]){
+    const doc=bodySchema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
+      {type:'column',content:[p('/')]},{type:'column',content:[p('相邻栏保持原样')]},
+    ]}]});
+    let state=EditorState.create({schema:bodySchema,doc,plugins:[history()]});
+    state=state.apply(insertKeyImagesTransaction(state,{from:3,to:4},ids));
+    state.doc.check();
+    const row=state.doc.firstChild;
+    assert.equal(row.childCount,2);
+    assert.deepEqual(row.child(0).content.content.map(node=>node.type.name),ids.map(()=>'reportImage'));
+    assert.deepEqual(row.child(0).content.content.map(node=>node.attrs.imageId),ids);
+    assert.deepEqual(row.child(1).toJSON(),doc.firstChild.child(1).toJSON());
+    assert.ok(undo(state,tr=>{state=state.apply(tr)}));
+    assert.deepEqual(state.doc.toJSON(),doc.toJSON());
+  }
 });
 test('selected-image columns pass report validation and retain IDs and order in storage',()=>{
   const store=openStore(':memory:');
@@ -60,4 +80,19 @@ test('selected-image columns pass report validation and retain IDs and order in 
     assert.deepEqual(saved,body);
     bodySchema.nodeFromJSON(saved).check();
   }finally{store.close()}
+});
+test('column detection follows the menu anchor through ancestor blocks, not the current selection',()=>{
+  const doc=bodySchema.nodeFromJSON({type:'doc',content:[p('分栏外'),{type:'columns',content:[
+    {type:'column',content:[{type:'bulletList',content:[{type:'listItem',content:[p('/列表内容')]}]}]},
+    {type:'column',content:[p('相邻栏')]},
+  ]}]});
+  const state=EditorState.create({schema:bodySchema,doc});
+  let from;doc.descendants((node,pos)=>{if(node.isText&&node.text.startsWith('/'))from=pos});
+  assert.equal(isKeyImageInsertionInColumn(state,{from:1,to:1}),false);
+  assert.equal(isKeyImageInsertionInColumn(state,{from,to:from+1}),true);
+  const updated=state.apply(insertKeyImagesTransaction(state,{from,to:from+1},['knee','lumbar']));
+  updated.doc.check();
+  let rows=0;updated.doc.descendants(node=>{if(node.type.name==='columns')rows++});
+  assert.equal(rows,1);
+  assert.ok(updated.doc.textContent.includes('列表内容'));
 });

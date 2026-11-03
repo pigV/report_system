@@ -67,3 +67,5 @@ When hovering over a text block inside a column, show only an add button followi
 ## Approved key image menu (2026-11-04)
 
 The report body's plus/slash insert menu includes 关键影像 under 自定义块. Open a secondary menu with image thumbnails, names, metadata and multi-select checkboxes using the same key-image data as the evidence sidebar. Keep the menu open while selecting; show the selected count and resulting column count, 清空 and 插入 N 张. Insert at the original menu anchor, one equal native column per selected image in selection order. Preserve surrounding content, report persistence, read-only/print rendering and single-step undo. The approved visual is `designs/key-image-menu-approved.png`.
+
+When the insertion anchor is already inside a column, insert the selected image blocks directly into that current column in selection order; do not create nested columns. Show 插入当前栏 in the selection summary. Only insertions outside columns create one new column per selected image.

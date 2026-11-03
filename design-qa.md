@@ -45,6 +45,16 @@
 
 final result: passed
 
+### 2026-11-04 follow-up — reuse the current column
+
+User correction: insert image blocks directly into the current column when the menu anchor is inside a column. The footer now says 插入当前栏; outside columns it continues to show 将生成 N 列.
+
+Browser verification in a fresh report: create a two-column row, insert two selected images in its first column, and inspect the rendered DOM. The row still has two columns and two images, with zero nested column containers. The adjacent column remains unchanged. Screenshot: `designs/key-image-within-column-verified.png`. No error-level console messages.
+
+74/74 tests passed, including one/multiple images in empty/nonempty columns, ancestor detection through a list, original-anchor detection independent of the current selection, surrounding-content preservation and single-step undo. Vite and Sites build preparation passed.
+
+final result: passed
+
 
 ## 2026-11-04 — Key image cascade menu
 

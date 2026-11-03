@@ -2,7 +2,7 @@
 import { ref,computed,watch,nextTick,onMounted,onBeforeUnmount } from 'vue';
 import { PhTextT,PhTextH,PhTable,PhColumns,PhMinus,PhListBullets,PhDatabase,PhCaretRight,PhArrowLeft,PhImage } from '@phosphor-icons/vue';
 import KeyImagePicker from './KeyImagePicker.vue';
-const props=defineProps({items:Array,onPick:Function});
+const props=defineProps({items:Array,onPick:Function,insideColumn:Boolean});
 const selected=ref(0),children=ref(null),root=ref(null),columnOpen=ref(false),columnCount=ref(3),panelStyle=ref({});
 const imageOpen=ref(false),imagePicker=ref(null),imagePanel=ref(null),imageStyle=ref({});
 let columnAnchor=null;
@@ -81,7 +81,7 @@ defineExpose({onKeyDown});
     </template>
     <p v-if="!visible.length">没有匹配内容</p><div class="native-slash-help">↑ ↓ 选择 · Enter 插入 · Esc 关闭</div>
   </div>
-  <div v-if="imageOpen" ref="imagePanel" class="key-image-picker-position" :style="imageStyle"><KeyImagePicker ref="imagePicker" @insert="insertImages" @close="imageOpen=false"/></div>
+  <div v-if="imageOpen" ref="imagePanel" class="key-image-picker-position" :style="imageStyle"><KeyImagePicker ref="imagePicker" :inside-column="insideColumn" @insert="insertImages" @close="imageOpen=false"/></div>
   <div v-if="columnOpen" class="column-picker" :style="panelStyle" role="group" aria-label="选择分栏数">
     <div class="column-picker-heading"><span>选择栏数</span><strong>{{columnCount}}</strong></div>
     <div class="column-picker-preview">
