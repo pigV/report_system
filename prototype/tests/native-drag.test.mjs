@@ -50,7 +50,7 @@ test('undoing a drag retains text typed immediately before it', () => {
   assert.deepEqual(state.doc.toJSON(),doc.toJSON());
 });
 
-test('column add control targets the hovered block and inserts inside that column', () => {
+test('column add control opens on the hovered text block without creating a new row', () => {
   for(const schema of [nativeSchema,bodySchema]){
     const doc=schema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
       {type:'column',content:[{type:'paragraph',content:[{type:'text',text:'第一栏'}]}]},
@@ -70,12 +70,36 @@ test('column add control targets the hovered block and inserts inside that colum
     state=state.apply(insertColumnSlash(state,target));
     const columns=state.doc.firstChild;
     assert.equal(columns.child(0).childCount,1);
-    assert.equal(columns.child(1).childCount,3);
-    assert.equal(columns.child(1).lastChild.textContent,'/');
-    assert.equal(state.selection.$from.parent.textContent,'/');
+    assert.equal(columns.child(1).childCount,2);
+    assert.equal(columns.child(1).lastChild.textContent,'/第二栏第二段');
+    assert.equal(state.selection.$from.parent,columns.child(1).lastChild);
+    assert.equal(state.selection.$from.parentOffset,1);
     const changed=state.apply(state.tr.insertText('修改',target.pos+1));
     assert.equal(insertColumnSlash(changed,target),null);
     assert.equal(undo(state,tr=>{state=state.apply(tr)}),true);
     assert.deepEqual(state.doc.toJSON(),doc.toJSON());
+  }
+});
+
+test('column add control uses an existing empty row and ignores non-text blocks', () => {
+  for(const schema of [nativeSchema,bodySchema]){
+    const doc=schema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
+      {type:'column',content:[{type:'paragraph'}]},
+      {type:'column',content:[{type:'horizontalRule'},{type:'paragraph'}]},
+    ]}]});
+    let state=EditorState.create({doc,plugins:[history()]});
+    const column=state.doc.firstChild.child(1),start=state.doc.firstChild.child(0).nodeSize+2;
+    const nonText={pos:start,node:column.child(0)};
+    const columnDom={getBoundingClientRect:()=>({left:300,top:100,bottom:150})};
+    const blockDom={getBoundingClientRect:()=>({top:100,bottom:120}),contains:target=>target===child};
+    const child={closest:()=>columnDom};
+    const view={state,dom:{contains:x=>x===columnDom},posAtDOM:()=>start,nodeDOM:()=>blockDom};
+    assert.equal(!!columnInsertTarget(view,child,110),false);
+    assert.equal(!!insertColumnSlash(state,nonText),false);
+    const empty={pos:start+nonText.node.nodeSize,node:column.child(1)};
+    state=state.apply(insertColumnSlash(state,empty));
+    assert.equal(state.doc.firstChild.child(1).childCount,2);
+    assert.equal(state.doc.firstChild.child(1).lastChild.textContent,'/');
+    assert.equal(state.selection.$from.parentOffset,1);
   }
 });

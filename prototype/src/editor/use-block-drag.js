@@ -21,8 +21,45 @@ let dragSequence = 0;
 
 export function useBlockDrag(editor, isDisabled) {
   const dropLine = ref(null);
+  const menuOffsets = new WeakMap();
   let stopDrag = () => {};
   let suppressClick = false;
+
+  // Yiitap repositions its side menu only on mouseover. Move the menu between
+  // those events so its six-dot handle tracks Y like the add control in columns.
+  function visibleMenu(ed, y) {
+    const doc = ed.view.dom.ownerDocument;
+    const view = ed.view.dom.getBoundingClientRect();
+    return [...doc.querySelectorAll('.side-menu')]
+      .filter(menu => menu.querySelector('.o-drag-btn')
+        && doc.defaultView.getComputedStyle(menu).visibility === 'visible'
+        && menu.closest('[data-tippy-root]')?.style.visibility === 'visible')
+      .sort((a, b) => {
+        const distance = menu => {
+          const rect = menu.getBoundingClientRect();
+          return Math.abs(rect.right - view.left) + Math.abs((rect.top + rect.bottom) / 2 - y);
+        };
+        return distance(a) - distance(b);
+      })[0] ?? null;
+  }
+
+  function followMenu(ed, menu, y, grabOffset) {
+    if (!menu?.isConnected) return;
+    const rect = menu.getBoundingClientRect();
+    const view = ed.view.dom.getBoundingClientRect();
+    const previous = menuOffsets.get(menu) ?? 0;
+    const desiredTop = Math.max(view.top, Math.min(y - grabOffset, view.bottom - rect.height));
+    const offset = desiredTop - (rect.top - previous);
+    menu.style.transform = `translateY(${offset}px)`;
+    menuOffsets.set(menu, offset);
+  }
+
+  function handleHover(event) {
+    const ed = editor.value;
+    if (!ed || ed.isDestroyed || isDisabled() || !ed.view.dom.contains(event.target)) return;
+    const menu = visibleMenu(ed, event.clientY);
+    if (menu) followMenu(ed, menu, event.clientY, menu.getBoundingClientRect().height / 2);
+  }
 
   function blocks() {
     const ed = editor.value;
@@ -54,11 +91,13 @@ export function useBlockDrag(editor, isDisabled) {
 
     const doc = event.target.ownerDocument;
     const win = doc.defaultView ?? window;
+    const dragMenu = handle.closest('.side-menu');
+    const menuGrabOffset = dragMenu ? event.clientY - dragMenu.getBoundingClientRect().top : 0;
     const dragToken = `drag-${++dragSequence}`;
     const sourceNode = source.node;
-    const originalIndex = items.findIndex(item => item.node === sourceNode);
+    const originalIndex = items.indexOf(source);
     const start = { x: event.clientX, y: event.clientY };
-    const pointer = { x: start.x, y: start.y };
+    const pointer = { y: start.y };
     const grabOffset = start.y - source.rect.top;
 
     let started = false;
@@ -69,7 +108,7 @@ export function useBlockDrag(editor, isDisabled) {
     let lastBoundary = null;
     let lastMoveAt = 0;
     let raf = 0;
-    let scrollEl = doc.scrollingElement;
+    let scrollEl;
     let styleEl = null;
 
     const scrollAncestor = () => {
@@ -222,6 +261,7 @@ export function useBlockDrag(editor, isDisabled) {
       if (pointer.y < top + SCROLL_EDGE) step = -SCROLL_STEP;
       else if (pointer.y > bottom - SCROLL_EDGE) step = SCROLL_STEP;
       if (step) scrollEl.scrollBy(0, step);
+      if (dragMenu) followMenu(ed, dragMenu, pointer.y, menuGrabOffset);
       place();
       retarget();
       raf = win.requestAnimationFrame(loop);
@@ -243,8 +283,6 @@ export function useBlockDrag(editor, isDisabled) {
         ed.view.dom.style.removeProperty('--block-drag-y');
       }
       styleEl?.remove();
-      styleEl = null;
-      styledIndex = -1;
     };
 
     const begin = () => {
@@ -254,7 +292,6 @@ export function useBlockDrag(editor, isDisabled) {
       doc.head.appendChild(styleEl);
       ed.view.dom.setAttribute('data-block-drag', dragToken);
       ed.view.dom.style.setProperty('--block-drag-y', '0px');
-      translateY = 0;
       doc.documentElement.classList.add('sorting');
       scrollEl = scrollAncestor();
       place();
@@ -303,8 +340,8 @@ export function useBlockDrag(editor, isDisabled) {
     };
 
     const move = e => {
-      pointer.x = e.clientX;
       pointer.y = e.clientY;
+      if (dragMenu) followMenu(ed, dragMenu, e.clientY, menuGrabOffset);
       if (!started) {
         if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return;
         begin();
@@ -342,5 +379,5 @@ export function useBlockDrag(editor, isDisabled) {
 
   onBeforeUnmount(() => stopDrag());
 
-  return { dropLine, startDrag, handleClick };
+  return { dropLine, startDrag, handleClick, handleHover };
 }

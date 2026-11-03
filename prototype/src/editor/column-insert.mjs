@@ -17,16 +17,16 @@ export function columnInsertTarget(view, target, y) {
       const distance = Math.max(item.rect.top - y, 0, y - item.rect.bottom);
       return !nearest || distance < nearest.distance ? {...item, distance} : nearest;
     }, null);
-  if (!block) return null;
+  if (!block?.node.isTextblock) return null;
   const rect = column.getBoundingClientRect();
   return {pos:block.pos, node:block.node, left:rect.left + 4, top:Math.max(rect.top, Math.min(y - 12, rect.bottom - 24))};
 }
 
 export function insertColumnSlash(state, target) {
   if (state.doc.nodeAt(target.pos) !== target.node) return null;
-  const end = target.pos + target.node.nodeSize, $end = state.doc.resolve(end);
-  const paragraph = state.schema.nodes.paragraph;
-  if ($end.parent.type.name !== 'column' || !$end.parent.canReplaceWith($end.index(), $end.index(), paragraph)) return null;
-  const tr = state.tr.insert(end, paragraph.create(null, state.schema.text('/')));
-  return tr.setSelection(TextSelection.create(tr.doc, end + 2)).scrollIntoView();
+  const $start = state.doc.resolve(target.pos);
+  if ($start.parent.type.name !== 'column' || !target.node.isTextblock) return null;
+  const cursor = target.pos + 1;
+  const tr = state.tr.insertText('/', cursor);
+  return tr.setSelection(TextSelection.create(tr.doc, cursor + 1)).scrollIntoView();
 }

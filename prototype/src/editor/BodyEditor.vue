@@ -12,7 +12,7 @@ import { bodyMenuItems } from '../free-template/menu.mjs';
 const props=defineProps({content:Object,readonly:Boolean,scope:Object,selectedImage:String});
 const emit=defineEmits(['update']);
 const editor=shallowRef(null);
-const {dropLine,startDrag,handleClick}=useBlockDrag(editor,()=>props.readonly);
+const {dropLine,startDrag,handleClick,handleHover}=useBlockDrag(editor,()=>props.readonly);
 const suggestion=businessSuggestion(()=>[],bodyMenuItems);
 const extensions=[...bodyExtensions({readonly:props.readonly,getScope:()=>props.scope,getSelected:()=>props.selectedImage}),{name:'OSlash',configure:{suggestion}},{name:'OSlashZh',configure:{suggestion}}];
 const layoutDialog=ref(null),rows=ref(1),columns=ref(3);let layoutRange=null;
@@ -35,7 +35,7 @@ function insertTemplate(entry){
 defineExpose({insertTemplate});
 </script>
 <template>
-<div class="body-editor" :class="{'body-editor-editable':!readonly}" @mousedown.capture="startDrag" @click.capture="handleClick" @report-custom-pictures="customPictures">
+<div class="body-editor" :class="{'body-editor-editable':!readonly}" @mousedown.capture="startDrag" @mousemove="handleHover" @click.capture="handleClick" @report-custom-pictures="customPictures">
   <YiiEditor :content="content" :editable="!readonly" :extensions="extensions" :title="false" locale="zh-CN" page-view="full" :show-main-menu="false" :show-bubble-menu="!readonly" :bubble-menu="['bold','italic','underline','strike']" :show-floating-menu="false" :show-side-node="false" :side-menu="{show:!readonly,add:'empty'}" @create="ready" @update="({editor:e})=>emit('update',e.getJSON())"/>
   <ColumnInsertControl :editor="editor" :disabled="readonly"/>
   <Teleport to="body"><div v-if="dropLine" class="native-drop-line" :style="{left:dropLine.left+'px',top:dropLine.top+'px',width:dropLine.width+'px'}"/></Teleport>
