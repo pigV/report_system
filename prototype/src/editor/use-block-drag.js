@@ -1,3 +1,6 @@
+// 【学习09】六点手柄排序；对照指南第 7.9 节。use 开头表示复用状态/行为的 Vue composable。
+// Yiitap 提供手柄 UI；此处用鼠标坐标/动画做交互，reorderBlock 用 PM 事务改真实块顺序。
+// 当前这条路径监听鼠标事件，不等于另一套 pointer-sort 对触摸/手写笔的支持。
 import { effectiveZoom } from './effective-zoom.mjs';
 import { sideMenuOffset } from './side-menu-position.mjs';
 import { ref, onBeforeUnmount } from 'vue';
@@ -24,6 +27,8 @@ const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(pre
 let dragSequence = 0;
 
 export function useBlockDrag(editor, isDisabled) {
+  // dropLine 是需要 Vue 重绘的插入线；其余会话变量只供事件回调使用，不都需要 ref。
+  // editor 是 shallowRef，isDisabled 是读取最新只读状态的函数，避免初始化后取值过期。
   const dropLine = ref(null);
   const menuOffsets = new WeakMap();
   let stopDrag = () => {};
@@ -52,6 +57,7 @@ export function useBlockDrag(editor, isDisabled) {
   }
 
   function positionMenu(ed, menu, top) {
+    // 屏幕 rect 已受 zoom 影响，CSS transform 在元素自身坐标中应用，必须换算缩放。
     if (!menu?.isConnected) return;
     const rect = menu.getBoundingClientRect();
     const view = ed.view.dom.getBoundingClientRect();
@@ -70,6 +76,7 @@ export function useBlockDrag(editor, isDisabled) {
   }
 
   const hoverDwell = createBlockHoverDwell(dom => {
+    // 跨块悬停够时长才换菜单锚点；在同一块内上下移动不让手柄一直追着鼠标抖动。
     if (!hoverEditor || !hoverMenu || !dom.isConnected) return;
     anchorTop = blockTop(dom, hoverMenu);
     anchorLeft = dom.getBoundingClientRect().left;
@@ -105,6 +112,8 @@ export function useBlockDrag(editor, isDisabled) {
   function handleLeave() { hoverDwell.leave(); }
 
   function blocks() {
+    // state.doc.forEach 只遍历顶层块；nodeDOM 将文档 pos 对回可测量的 DOM。
+    // 分栏内的段落不是这里独立排序的顶层项，整组分栏作为一个块移动。
     const ed = editor.value;
     const result = [];
     if (!ed || ed.isDestroyed) return result;
@@ -117,6 +126,7 @@ export function useBlockDrag(editor, isDisabled) {
   }
 
   function startDrag(event) {
+    // 捕获阶段识别 Yiitap 六点按钮；只有左键且可编辑才接管，不改变普通文字拖选。
     const handle = event.target.closest?.('.o-drag-btn');
     if (!handle || event.button !== 0 || isDisabled() || !editor.value || editor.value.isDestroyed || !editor.value.isEditable) return;
     stopDrag();
@@ -179,6 +189,7 @@ export function useBlockDrag(editor, isDisabled) {
 
     // Locate the dragged node in the current document by identity: reorderBlock
     // re-inserts the same node object, so its position survives each move.
+    // 节点被重排后旧 pos 就失效；按同一个节点对象在新 state.doc 中重新找位置。
     const locate = () => {
       let found = null;
       let index = 0;
@@ -201,6 +212,8 @@ export function useBlockDrag(editor, isDisabled) {
     };
 
     // Match the column add control: keep the grab point directly under the pointer.
+    // “原块跟手”只负责视觉位移；真正顺序由 retarget 提交的文档事务决定。
+    // grabOffset 保留初始抓取点，除 effectiveZoom 将屏幕位移转为 CSS 位移。
     const place = () => {
       if (!started || ed.isDestroyed) return;
       const info = locate();
@@ -228,6 +241,7 @@ export function useBlockDrag(editor, isDisabled) {
     // where the neighbours actually are instead of snapping to final layout.
     const snapshot = () => new Map(blocks().filter(item => item.node !== sourceNode).map(item => [item.node, item.rect]));
 
+    // FLIP：记录排序前矩形，用新矩形算偏移，再从偏移量动画到 0；不修改正文 JSON。
     const flip = before => {
       if (reducedMotion()) return;
       for (const item of blocks()) {
@@ -267,6 +281,7 @@ export function useBlockDrag(editor, isDisabled) {
       const boundary = next?.pos ?? ed.state.doc.content.size;
       if (boundary === lastBoundary) return;
       lastBoundary = boundary;
+      // 连续跨位尽量沿用历史组；暂停超过阈值会切组，因此长拖动不保证总是一步撤销。
       const closeGroup = Date.now() - lastMoveAt > 500;
       const tr = reorderBlock(ed.state, info.pos, boundary, { closeGroup, scrollIntoView: false });
       if (!tr) return;
@@ -282,6 +297,7 @@ export function useBlockDrag(editor, isDisabled) {
 
     // Put the block back in its original slot: insert before the block that now
     // occupies that index, or append when it was last.
+    // 取消时也用事务恢复节点顺序，而不只是把 transform 清零；否则保存/打印仍会是新顺序。
     const restore = () => {
       if (ed.isDestroyed) return;
       const info = locate();
@@ -296,6 +312,7 @@ export function useBlockDrag(editor, isDisabled) {
       place();
     };
 
+    // 每个动画帧同时做边缘滚动、跟手显示和命中检测；结束后必须 cancelAnimationFrame。
     const loop = () => {
       if (!started || finished) return;
       const top = scrollEl === doc.scrollingElement ? 0 : scrollEl.getBoundingClientRect().top;
@@ -342,6 +359,7 @@ export function useBlockDrag(editor, isDisabled) {
       raf = win.requestAnimationFrame(loop);
     };
 
+    // mouseup 并不必然提交：还需判断落点、是否仍可编辑；Esc/失焦走恢复路径。
     const finish = (commit, event) => {
       if (finished) return;
       finished = true;
@@ -421,6 +439,7 @@ export function useBlockDrag(editor, isDisabled) {
   }
 
   onBeforeUnmount(() => {
+    // Vue 组件卸载也要结束拖动并清理，避免全局 mousemove 和临时 CSS 遗留。
     stopDrag();
     hoverDwell.reset();
     if (hoverMenu) hoverMenu.style.transform = '';

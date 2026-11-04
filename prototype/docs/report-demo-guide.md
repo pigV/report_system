@@ -4,6 +4,8 @@
 
 核对日期：2026-11-05。代码基线：`914793d`。依赖版本来自 [package.json](../package.json)：Vue `3.5.22`、Yiitap `0.19.3`、Tiptap `3.32.2`。本文只说明这一版的实际行为；项目历史说明中有些规则后来变过，不能只看旧注释判断当前功能。
 
+**现在可以结合代码学习：** 报告演示相关源码增加了 `【学习01】`～`【学习11】` 中文注释，解释输入、输出、调用关系和 API 归属。初次阅读建议先看下方第 11 节的路线，再按需要返回前面的概念章节。本轮只加注释和学习说明，沿用上述功能基线。
+
 阅读路线：
 
 1. [页面功能和边界](#1-页面功能和边界)
@@ -16,6 +18,7 @@
 8. [打印为什么要单独实现](#8-打印为什么要单独实现)
 9. [查代码和继续学习的路线](#9-查代码和继续学习的路线)
 10. [核对方式与常见误解](#10-核对方式与常见误解)
+11. [结合注释代码逐步学习](#11-结合注释代码逐步学习)
 
 ## 1. 页面功能和边界
 
@@ -803,3 +806,161 @@ node --test tests/*.test.mjs
 | 未保存警告说明已经自动保存 | 它只提醒存在内存修改，不能代替持久化 |
 
 读代码时先问三个问题会更容易定位：**谁拥有这份数据？谁真正改变了编辑器文档？这次变化有没有写入持久存储？** 页面按钮、Vue 状态、编辑器事务和后端保存分别回答不同的问题。
+
+## 11. 结合注释代码逐步学习
+
+### 11.1 怎么用这些注释
+
+在编辑器中同时打开本文与对应源码。用全局搜索找 `【学习06】` 这样的编号，能把一个功能分散在不同文件中的入口串起来；再搜索下面列出的函数名，阅读函数旁的细节注释。编号表示知识主题，不表示源码行号，不会因前面增加几行注释就失效。
+
+注释分三层：文件开头说明“这一层负责什么”，函数前说明输入/返回/副作用，关键语句前解释“为什么要这样处理”。Vue 模板里也补了 props、事件、组件 key 和 Teleport 的对应说明。
+
+源码保留了当前格式和已有逻辑。不要要求自己第一遍就读懂某个很长的单行函数；先从注释找到输入和输出，再把表达式按 `;`、条件分支和调用关系拆开看。尤其不要先从拖动和分页算法入手。
+
+### 11.2 先读组件，再读编辑器
+
+以下是推荐顺序，按难度排序；不必按编号从 01 读到底。
+
+| 阅读顺序 | 搜索编号与打开文件 | 这一步掌握什么 | 阅读后自己回答 |
+| --- | --- | --- | --- |
+| 1 | `【学习02】`：[ClinicalDetail.vue](../src/ClinicalDetail.vue) | props、emit、自定义组件 `v-model`、对象复制、追加草稿 | 为什么输入框改变后要发 `update:modelValue`，而不是直接改 props？ |
+| 2 | `【学习02】`：[ClinicalSidebar.vue](../src/ClinicalSidebar.vue)、[clinical-assistance.mjs](../src/clinical-assistance.mjs) | `ref`、`computed`、`watch`、副本、本机存储 | 草稿、已保存模板和搜索列表分别是谁？点击保存后什么触发 dirty 变为 false？ |
+| 3 | `【学习01】`：[main.js](../src/main.js)、[App.vue](../src/App.vue) | 应用挂载、页面状态、异步加载、请求过期保护 | 首次打开为什么是报告页？两轮 load 乱序返回时怎么避免显示旧结果？ |
+| 4 | `【学习03】`：[ReportPaper.vue](../src/ReportPaper.vue)、[BodyEditor.vue](../src/editor/BodyEditor.vue)、[demo-report.mjs](../src/demo-report.mjs) | props 向下/事件向上、`defineExpose`、组件 ref 与编辑器实例的区别 | 哪个对象是 Vue 组件？哪个是 Tiptap 实例？正文 JSON 最终归谁持有？ |
+| 5 | `【学习04】`：[body-schema.mjs](../src/editor/body-schema.mjs) | 节点、扩展、schema、只读行为 | 为什么只读仍要保留 Column/ColumnContainer，却不加载 ColumnDeletion？ |
+| 6 | `【学习05】`：[menu.mjs](../src/free-template/menu.mjs)，再读 [suggestion.js](../src/free-template/suggestion.js)、[SlashMenu.vue](../src/free-template/SlashMenu.vue) | Tiptap 命令链、Yiitap 触发器、VueRenderer、菜单范围 | 选择二级标题时，哪一步只是显示候选，哪一步真正修改文档？ |
+| 7 | `【学习06】`：[BodyEditor.vue](../src/editor/BodyEditor.vue)、[report-sections.mjs](../src/editor/report-sections.mjs) | EditorState、事务、Fragment、TextSelection、历史边界 | 为什么 `replaceWith(pos,pos,...)` 能保留已选中文字？dispatch 与保存有什么区别？ |
+| 8 | `【学习07】`：[KeyImagePicker.vue](../src/free-template/KeyImagePicker.vue)、[key-image-insert.mjs](../src/editor/key-image-insert.mjs)、[report-images.mjs](../src/editor/report-images.mjs) | 多选状态、文档节点、自定义 NodeView、图片拖放 | 勾选图片会不会立即改变正文？图片数据和编辑按钮分别定义在哪里？ |
+| 9 | `【学习08】`：[column-insert.mjs](../src/editor/column-insert.mjs)、[column-delete.mjs](../src/editor/column-delete.mjs)、[ColumnInsertControl.vue](../src/editor/ColumnInsertControl.vue) | DOM 与文档位置转换、选中文字/整节点的区别 | 点空栏内部和点边缘为什么不同？为什么要先检查 target 节点仍是同一个对象？ |
+| 10 | `【学习09】`：[use-block-drag.js](../src/editor/use-block-drag.js)、[block-drag.mjs](../src/free-template/block-drag.mjs) | composable、动画帧、FLIP、节点移动事务 | transform 负责什么？如果只清 transform 不恢复文档，取消拖动会留下什么问题？ |
+| 11 | `【学习10】`：[ReportPrintPreview.vue](../src/ReportPrintPreview.vue)、[render.mjs](../src/printing/render.mjs)、[paginate.mjs](../src/printing/paginate.mjs)、[print.css](../src/printing/print.css) | 异步取消、DOMSerializer、真实测量、递归分页、纸张样式 | nextTick 为什么不能代替图片加载？为什么测量容器不能用 display:none？ |
+| 12 | `【学习11】`：[App.vue](../src/App.vue)、[api.mjs](../server/api.mjs)、[store.mjs](../server/store.mjs) | fetch、JSON、Vite 中间件、SQLite、版本与快照 | 哪一步才真正写磁盘？版本检查和正文 schema 检查各自防什么问题？ |
+
+### 11.3 用四条真实操作链把代码连起来
+
+#### 第一条：改个人模板中的一句话
+
+先不碰正文编辑器。打开 `ClinicalDetail.update()`，看见：
+
+```js
+function update(key, value) {
+  emit('update:modelValue', { ...props.modelValue, [key]: value });
+}
+```
+
+逐项对应：
+
+- `key` 是 `findings` 或 `impression`，来自输入框事件。
+- `{ ...props.modelValue }` 复制原对象，`[key]: value` 覆盖本次字段。
+- `emit()` 送出新的草稿；`ClinicalSidebar` 中的 `v-model="draft"` 接住它。
+- `dirty` 比较 `draft` 与列表中的已保存条目，界面显示未保存状态。
+- 点个人模板“保存”才进入 `ClinicalSidebar.save()`，再写本机存储。
+
+自检：`emit('cite', modelValue)` 与 `emit('update:modelValue', ...)` 是两类事件；前者请求引用，后者只改当前草稿。它们都不直接调用 SQLite。
+
+#### 第二条：把模板引用到正文光标处
+
+按下面顺序搜索函数名；先不读旧 `replaceSectionsTransaction`：
+
+```text
+ClinicalDetail 中 emit('cite', modelValue)
+→ ClinicalSidebar / EvidenceSidebar 转发 insert
+→ App.insertTemplate
+→ ReportPaper 的 defineExpose({insertTemplate: ...})
+→ BodyEditor.insertTemplate
+→ insertCitationTransaction
+→ editor.value.view.dispatch
+→ YiiEditor update / e.getJSON()
+→ ReportPaper updateBody
+→ App 的 @update-body 更新 body
+```
+
+阅读 `BodyEditor` 时，把三个对象分开：
+
+| 名称 | 是什么 | 关键用途 |
+| --- | --- | --- |
+| App 中的 `reportPaper.value` | Vue 子组件引用 | 调用纸张组件暴露的 `insertTemplate` |
+| ReportPaper 中的 `bodyEditor.value` | Vue 子组件引用 | 再调用正文组件暴露的方法 |
+| BodyEditor 中的 `editor.value` | Yiitap 创建并暴露的 Tiptap 实例 | 读取 `state`、构建/提交事务、获取 JSON |
+
+再读核心事务代码：
+
+```js
+const pos = state.selection.to; // 选区末端，不是鼠标屏幕坐标
+const tr = closeHistory(state.tr)
+  .replaceWith(pos, pos, Fragment.fromArray(nodes)); // 相同起止位置：只插入
+tr.setSelection(TextSelection.create(tr.doc, pos + insertedSize));
+```
+
+这是结构讲解片段，`insertedSize` 在实际代码中由节点 `nodeSize` 累加得到。重点看 `tr.doc`：它是本次修改后的文档；构建事务时旧 `state.doc` 还没包含新内容，不能混用。
+
+自检：这条链结束于更新内存正文，不会经过 `api.mjs`；一次引用可以撤销，但不代表已经保存。
+
+#### 第三条：从 slash 菜单插入四张关键影像
+
+先读 `KeyImagePicker.selected` 和 `toggle()`，再到 `menu.mjs` 的 `action==='keyImages'` 分支，最后看 `insertKeyImagesTransaction()`。
+
+```text
+Vue selected：按选择顺序记录四个 ID
+→ emit('insert', IDs)
+→ SlashMenu.insertImages：组装 action / imageIds
+→ suggestion.js 注入的 onPick：携带原 range
+→ executeNativeInsert：选择图片事务分支
+→ insertKeyImagesTransaction：判断栏内还是栏外，生成节点
+→ cursorAfterLastInsertion：布局后段落与光标
+→ dispatch：正文改变
+```
+
+栏外四张生成两组 `columns`，每组两栏；各栏内是图片和空段落。栏内选择四张则直接向当前栏插四个图片块，不套成 2×2 新布局。两条路径使用相同勾选界面，但文档结构不同。
+
+自检：四张“关键影像”与“四张图片”预设的区别是什么？前者带具体图片，后者先建空布局；可以在 `menu.mjs` 的不同 action 分支对照。
+
+#### 第四条：打印一份尚未保存的报告
+
+从 `App.openPrint()` 开始，看快照被传到 `ReportPrintPreview`，然后追 `prepare → buildPrintPages → paginate`。把两个“等待”分开：
+
+1. `nextTick()` 等 Vue 先把测量容器挂到 DOM。
+2. `waitForPrintResources()` 等字体与图片稳定，才能算实际排版尺寸。
+
+`paginate()` 只知道“这些节点能不能放下”，通过 `fits` 回调向 `render.mjs` 询问浏览器尺寸，因此 Node 测试可以传一份模拟测量函数。这个设计让分页决策可以独立测试，而不需要在算法文件里使用 Vue 或浏览器。
+
+自检：打印开始和结束都没有报告 PUT 请求。`printSignature` 是打印专用占位块，不是供用户插入正文的 schema 节点；它先参与分页测量，最终被移到末页底部。
+
+### 11.4 四组“小观察”，不用先改功能
+
+以下是供学习时手动尝试的操作，不代表本轮已逐项人工测试。使用模拟数据练习即可；正文当前没有直接保存入口，刷新会丢失未保存编辑，浏览器可能先弹离开提示。个人模板“保存”会修改本机存储，练习时不必点击。
+
+1. **观察 Vue 数据流**：在个人模板描述里加一句话，看未保存标记；再看源码 `update → v-model → dirty`。解释为何右侧历史内容没有同步变化。
+2. **观察引用选区**：先在正文选中几个字，再点击侧栏引用，观察原文字仍保留；用一次撤销检查这次插入。对照 `selection.to` 和相同起止位置的 `replaceWith`。
+3. **观察“坐标”的两种意义**：栏内移动鼠标时，加号按 `getBoundingClientRect()` 的屏幕像素定位；点击后插入 `/` 则要用文档 pos。把 `columnInsertTarget` 返回值的 `left/top` 与 `pos` 分别圈出来。
+4. **观察输出与交互分离**：正文中能看到图片移除按钮，打印预览中没有。找到 `ReportImage.addNodeView()` 与 `renderHTML()`，解释为什么不需要打印时逐个隐藏 NodeView 按钮。
+
+### 11.5 调试时应该在哪里停下来
+
+如果使用浏览器开发者工具，可以在以下函数内部设置断点，再执行对应页面操作。函数名适合全局搜索定位，避免依赖容易变化的行号。
+
+| 断点 | 重点观察 | 正常情况下应理解到的事 |
+| --- | --- | --- |
+| `ClinicalDetail.update` | `key`、`value`、`props.modelValue` | 输入组件通过新对象事件更新草稿 |
+| `BodyEditor.ready` | 参数 `ed`、`ed.state`、`ed.view` | Yiitap create 给出的就是可操作的 Tiptap 实例 |
+| `BodyEditor.insertTemplate` | `positioned`、`state.selection.from/to` | Vue 的布尔标记与编辑器当前选区是两回事 |
+| `insertCitationTransaction` | `state.doc.toJSON()`、`tr.doc.toJSON()` | 构建事务时即可比较修改前/后文档；返回不等于已 dispatch |
+| `executeNativeInsert` | `item.action`、`range`、`options.afterBlock` | 同一菜单适配器为不同操作选择不同执行路径 |
+| `ReportImage` NodeView 的 `change` | `getPos()`、`attrs` | 替图改的是节点属性，不只是 DOM 的 src |
+| `reorderBlock` | `from`、`boundary`、`target`、`nodeSize` | 先删除源节点后，目标位置为什么要重新计算 |
+| `buildPrintPages` | `firstCapacity`、`continuationCapacity`、`pages` | 首页与续页容量不同，页数来自实际内容测量 |
+| `store.saveReport` | `context.reportRevision`、`currentRevision` | 只有真实 PUT 走进持久化层才会停在这里；顶部占位“提交报告”不会触发它 |
+
+学习过程中只查看这些值即可，不要在控制台直接调用 `dispatch` 或保存接口来“试一下”，否则会绕过页面的交互前提。想验证保存层，优先读现有 `store.test.mjs` 的临时数据库用例。
+
+### 11.6 这轮注释修改怎样保证不改变行为
+
+这轮新增说明涉及页面组件、菜单适配、文档扩展、图片/分栏、拖动、打印和保存层。验证分为三部分：
+
+- 将本轮修改与修改前版本比较，忽略注释和位置元数据后，检查 JavaScript 语法树；Vue 文件另外比较关闭注释输出时的模板编译结果及原有样式内容，CSS 比较去除注释后的内容。
+- 重新运行全部 Node 测试及生产构建，检查注释没有误入字符串、模板结构或编译路径。
+- 检查文档内的文件链接、学习编号和 Markdown 代码块，确保能按本节路线找到真实源码。
+
+这比只看“diff 新增了很多 `//`”更可靠；它仍不等于每一个浏览器交互都重新做过人工验收。实际测试与核对结果见本次提交说明。
+
+本轮验证结果：29 个源码/样式文件的语法树、模板编译或去注释内容比对一致；161 项 Node 测试全部通过；生产构建及 Sites 构建文件准备成功。文档链接、目录锚点、11 组学习编号和代码块检查通过。本地浏览器确认报告页正常加载；没有逐项重做所有编辑交互。构建仍有项目已有的大 chunk 体积提示。

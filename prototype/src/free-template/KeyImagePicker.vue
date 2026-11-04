@@ -1,4 +1,6 @@
 <script setup>
+// 【学习07】影像多选的 Vue 部分：只维护勾选顺序并发出 insert，不在组件里 dispatch。
+// 真正的文档结构和事务见 editor/key-image-insert.mjs；对照指南第 7.5 节。
 import {computed,ref} from 'vue';
 import {PhCheck} from '@phosphor-icons/vue';
 import {keyImages} from '../key-images.mjs';
@@ -6,10 +8,14 @@ import {keyImageGrid} from '../editor/key-image-insert.mjs';
 defineProps({insideColumn:Boolean});
 const emit=defineEmits(['insert','close']);
 const selected=ref([]),active=ref(0);
+// computed 让提示中的行列数随勾选自动变化；四张 2×2、六张 2×3，其余单行。
 const grid=computed(()=>keyImageGrid(selected.value.length));
+// 新选择放数组末尾，因此插图按选择顺序；取消后重选也会移到最后。
 function toggle(id){selected.value=selected.value.includes(id)?selected.value.filter(value=>value!==id):[...selected.value,id]}
+// 克隆数组再发事件，避免外部逻辑持有 selected 的同一个可变数组引用。
 function insert(){if(selected.value.length)emit('insert',[...selected.value])}
 function onKeyDown(event){
+  // active 是键盘高亮索引，selected 才是最终多选结果；移动高亮不会自动勾选。
   // Footer controls keep their native Space/Enter activation when tab-focused.
   if(event.target?.closest?.('footer')&&!['Escape','ArrowLeft'].includes(event.key))return false;
   if(event.key==='ArrowDown'||event.key==='ArrowUp'){
@@ -20,6 +26,7 @@ function onKeyDown(event){
   else return false;
   event.preventDefault();event.stopPropagation();return true;
 }
+// SlashMenu 从 suggestion 生命周期接键盘事件，再经组件 ref 调用这里暴露的方法。
 defineExpose({onKeyDown});
 </script>
 <template>

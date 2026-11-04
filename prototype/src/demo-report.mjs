@@ -1,3 +1,5 @@
+// 【学习03】报告演示专用的展示适配，不会修改医院模板或已保存的病例快照。
+// ReportPaper 与打印 renderHeader/renderSignature 共用它，保证两边显示相同字段。
 export const demoReportTitle='瑞派宠物影像诊断中心';
 export const demoReportSubtitle='影像诊断报告';
 export const demoLogo='/demo-images/hospital-logo.png';

@@ -1,4 +1,7 @@
 <script setup>
+// 【学习01】报告页面的总协调者；对照 docs/report-demo-guide.md 第 2～4 节。
+// 读报告功能时先看 load / insertTemplate / openPrint，再看下方三列组件的 props 和事件。
+// 此文件也容纳模板配置逻辑；表头字段拖动、绑定编辑不属于正文编辑器操作。
 import { computed, ref, shallowRef, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { PhFileText, PhBuildings, PhUserCircle, PhCaretDown, PhCaretRight, PhFloppyDisk, PhTextB, PhTextAlignLeft, PhTextAlignCenter, PhTextAlignRight, PhTable, PhDotsSixVertical, PhCheckCircle, PhArrowsOutSimple, PhX, PhCode, PhArrowCounterClockwise, PhInfo, PhArrowUp, PhArrowDown, PhSlidersHorizontal, PhCircleNotch, PhWarningCircle, PhDatabase, PhPencilSimple, PhList, PhPlus, PhTrash, PhPrinter, PhSquaresFour, PhImage, PhFolder, PhStar, PhMagnifyingGlass, PhWarning, PhExport } from '@phosphor-icons/vue';
 import TemplateEditor from './editor/TemplateEditor.vue';
@@ -10,11 +13,16 @@ import NativeTemplateWorkspace from './free-template/NativeTemplateWorkspace.vue
 import { hospitals, fieldsFor, pathOptions, validateTemplate, clone, moveField, emptyBody, addTemplateField, removeTemplateField, reportHospitalName, normalizeBindings, addBindingField, removeBindingField, moveBindingField } from './report-model.mjs';
 import { mergeSavedTemplate, fieldColumn, applyRegionEdit } from './editor-state.mjs';
 import { startPointerSort } from './editor/pointer-sort.js';
+// ref 让数据变化驱动界面；JS 中用 .value，Vue 模板中自动解包。
+// view 只根据初始 hash 决定入口，这里没有 Vue Router；没有指定 hash 时默认报告页。
 const hospital=ref('a'), section=ref('header'), view=ref(location.hash==='#native-templates'?'native':location.hash==='#templates'?'templates':'reports'), template=ref(null), baseline=ref(''), selected=ref('patientName');
+// body 是当前内存正文 JSON；bodyBaseline 只用于脏状态比较，不是自动保存。
+// bodyKey 在加载结束后递增，经 ReportPaper 传给 BodyEditor 的 key 以重建编辑器。
 const data=ref(null), caseId=ref(''), report=ref(null), body=ref(emptyBody()), bodyBaseline=ref(''), bodyKey=ref(0);
 const loading=ref(true), saving=ref(false), error=ref(''), showData=ref(true), zoom=ref('100'), toast=ref(''), advanced=ref(false), mobileSidebar=ref(false);
 const modal=ref(''), dialog=ref(null), pendingAction=shallowRef(null), editorRef=ref(null);
 const printSnapshot=ref(null);
+// 顶部按钮数据只负责展示；模板中的 @click 目前仅处理“打印”，提交报告仍是占位。
 const reportActions=[
   {label:'选择模板',icon:PhSquaresFour}, {label:'阅片',icon:PhImage},
   {label:'检查单',icon:PhFileText}, {label:'病历资料',icon:PhFolder},
@@ -22,6 +30,8 @@ const reportActions=[
   {label:'危急值',icon:PhWarning}, {label:'编辑检查',icon:PhPencilSimple},
   {label:'打印',icon:PhPrinter}, {label:'提交报告',icon:PhExport}
 ];
+// 【学习10】克隆当前内容生成一次打印快照，包含尚未保存的 body；这里没有调用 save。
+// printSnapshot 非空时创建打印组件，同时使后台页面 inert，避免打印准备中继续操作。
 function openPrint(){if(loading.value||saving.value||view.value!=='reports'||!paperData.value)return;closeModal();dialog.value?.close();printSnapshot.value=clone({template:paperTemplate.value,data:paperData.value,body:body.value,demo:true})}
 function printShortcut(e){if(view.value==='reports'&&!printSnapshot.value&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrint()}}
 const reportPaper=ref(null),personalRef=ref(null),personalDirty=ref(false),selectedImage=ref('');
@@ -29,6 +39,8 @@ watch([hospital,caseId],()=>selectedImage.value='');
 const nativeRef=ref(null),nativeDirty=ref(false),nativeBusy=ref(false),nativeError=ref('');
 function insertTemplate(content){
   if(loading.value||saving.value||view.value!=='reports')return;
+  // 【学习06】组件 ref 调用子组件暴露的方法；正文修改后仍通过事件沿原路回传 body。
+  // content 是侧栏 {findings, impression, ...}，不是整个报告 JSON。
   reportPaper.value?.insertTemplate(content);
 }
 let loadVersion=0,toastTimer;
@@ -38,6 +50,7 @@ const currentDoc=computed(()=>template.value?.[section.value]);
 const fields=computed(()=>fieldsFor(currentDoc.value));
 const selectedField=computed(()=>fields.value.find(f=>f.attrs.fieldId===selected.value));
 const grid=computed(()=>currentDoc.value?.content?.[0]);
+// computed 是派生值：依赖变化后重新计算，不在这里发保存请求。
 const templateDirty=computed(()=>template.value&&JSON.stringify(template.value)!==baseline.value);
 const bodyDirty=computed(()=>JSON.stringify(body.value)!==bodyBaseline.value);
 const isDirty=computed(()=>view.value==='native'?nativeDirty.value:view.value==='templates'?templateDirty.value:bodyDirty.value);
@@ -52,11 +65,15 @@ const availableBindings=computed(()=>{
 const bindingCandidate=computed(()=>availableBindings.value.find(f=>f.id===bindingToAdd.value)??availableBindings.value[0]);
 function addBinding(){if(bindingCandidate.value)template.value=addBindingField(template.value,bindingCandidate.value)}
 function deleteBinding(id){template.value=removeBindingField(template.value,id)}
+// 已有报告沿用其保存时的模板/病例数据快照，避免后来改模板影响旧报告。
+// 没有已保存报告时，才使用本次从模板和病例接口加载的数据。
 const paperTemplate=computed(()=>view.value==='reports'&&report.value?report.value.template:template.value);
 const paperData=computed(()=>view.value==='reports'&&report.value?report.value.data:data.value);
 const selectedIndex=computed(()=>fields.value.findIndex(f=>f.attrs.fieldId===selected.value));
 const selectedWidth=computed(()=>grid.value?.attrs.columnWidths[fieldColumn(currentDoc.value,selected.value)]??1);
 async function api(path,method='GET',payload){
+  // 这是浏览器 fetch 请求，与 Tiptap 命令无关；医院 ID 统一放在路径前缀。
+  // response.ok 表示 HTTP 是否成功，服务端返回的 JSON 中还可能包含 error 文本。
   const response=await fetch(`/api/hospitals/${hospital.value}/${path}`,{method,headers:{'Content-Type':'application/json'},...(payload?{body:JSON.stringify(payload)}:{})});
   const result=await response.json();if(!response.ok)throw new Error(result.error||'请求失败');return result;
 }
@@ -65,7 +82,9 @@ async function load(){
   // 医院或视图切换可能并发触发加载，只允许最后一次请求更新界面。
   const token=++loadVersion;loading.value=true;error.value='';data.value=null;report.value=null;
   try {
+    // 同一阶段的两个请求互不依赖，用 Promise.all 并行等待；下一阶段需要确定 caseId。
     const [t,list]=await Promise.all([api('template'),api('cases')]);
+    // 请求不能保证按发送顺序返回；只有最新一轮 load 才有资格更新界面。
     if(token!==loadVersion)return;
     template.value=normalizeBindings(t);baseline.value=JSON.stringify(template.value);
     if(!list.some(c=>c.id===caseId.value))caseId.value=list[0].id;
@@ -75,6 +94,8 @@ async function load(){
     selected.value=fieldsFor(t[section.value])[0]?.attrs.fieldId??'';
   } catch(e){if(token===loadVersion)error.value=e.message} finally {if(token===loadVersion)loading.value=false}
 }
+// 保存“稍后要做的动作”，等用户选择保存/放弃后执行；不是立即切换再询问。
+// 这套保护供代码中的视图/医院切换复用；报告页当前没有可见的全局切换导航。
 function guard(action){if(saving.value||nativeBusy.value)return;if(isDirty.value||personalDirty.value){pendingAction.value=action;modal.value='unsaved'}else action()}
 function chooseHospital(id){if(id===hospital.value)return;guard(()=>{hospital.value=id;caseId.value='';mobileSidebar.value=false;load()})}
 function chooseView(id){if(id===view.value)return;guard(()=>{view.value=id;history.replaceState(null,'',id==='native'?'#native-templates':id==='templates'?'#templates':location.pathname);showData.value=true;mobileSidebar.value=false;load()})}
@@ -115,6 +136,8 @@ function beginRowDrag(event,id){
   });
 }
 async function save(){
+  // 【学习11】三个视图各有保存分支。报告分支具备 PUT 能力，但当前报告工具栏没有接它，
+  // 正文 update 也没有自动调用它；不要把编辑成功/能打印理解为报告已持久化。
   if(view.value==='native')return await nativeRef.value?.save()??false;
   saving.value=true;error.value='';
   try {
@@ -124,6 +147,7 @@ async function save(){
       const saved=await api('template','PUT',submitted);template.value=mergeSavedTemplate(template.value,submitted,saved);baseline.value=JSON.stringify(saved);notify(templateDirty.value?'已保存提交的版本，后续修改尚未保存':'模板已保存，可在报告演示中使用');
     }else{
       // 提交正文和当前报告上下文；服务端用版本防冲突，并保留已有报告快照。
+      // 复制本次提交内容；若请求期间继续输入，baseline 只更新为提交版，后续输入仍标脏。
       const submitted=clone(body.value);
       const saved=await api(`reports/${caseId.value}`,'PUT',{body:submitted,context:{template:clone(paperTemplate.value),caseId:caseId.value,reportRevision:report.value?.revision??(report.value?1:0)}});report.value=saved;bodyBaseline.value=JSON.stringify(submitted);notify(bodyDirty.value?'已保存提交的正文，后续输入尚未保存':'报告正文已保存');
     }
@@ -133,8 +157,11 @@ async function save(){
 function closeModal(){if(nativeBusy.value||saving.value)return;modal.value='';pendingAction.value=null}
 async function confirmSwitch(saveFirst){if(nativeBusy.value||saving.value)return;if(saveFirst){if(personalDirty.value&&!personalRef.value?.save())return;if(isDirty.value&&!await save())return;}const action=pendingAction.value;closeModal();action?.()}
 function reset(){template.value=JSON.parse(baseline.value);selected.value=fieldsFor(template.value[section.value])[0]?.attrs.fieldId??'';closeModal();notify('已恢复到上次保存的配置')}
+// nextTick 等 Vue 完成本轮 DOM 更新后，再操作原生 dialog 的显示状态。
 watch(modal,async value=>{await nextTick();if(value)dialog.value?.showModal();else dialog.value?.close()});
+// 浏览器只允许给“有未保存修改”提供通用离开提醒；这不会替用户保存正文。
 function beforeUnload(e){if(isDirty.value||personalDirty.value){e.preventDefault();e.returnValue=''}}
+// 生命周期：挂载时加载/订阅，卸载时解绑；避免重复进入页面后留下多份全局监听。
 onMounted(()=>{load();window.addEventListener('beforeunload',beforeUnload);document.addEventListener('keydown',printShortcut)});
 onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);document.removeEventListener('keydown',printShortcut);clearTimeout(toastTimer)});
 </script>
@@ -204,6 +231,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
           </div>
           <div class="config-bottom"><span><PhCheckCircle :size="13"/>{{hospitalName}}独立配置</span><span>Yiitap 编辑器</span></div>
         </section>
+        <!-- 【学习02】左栏发 insert/dirty 事件；App 不直接读写子组件里的模板草稿。 -->
         <ClinicalSidebar v-else ref="personalRef" :hospital="hospital" :disabled="saving" @insert="insertTemplate" @dirty="v=>personalDirty=v" @notify="notify"/>
         <section class="preview-panel" aria-label="实时预览">
           <div v-if="view==='reports'" class="report-action-bar" role="toolbar" aria-label="报告操作">
@@ -214,6 +242,8 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
           <div v-if="view==='templates'" class="preview-toolbar"><h2>整页预览</h2><div class="preview-options"><span>模拟数据</span><button class="toggle" role="switch" aria-label="显示模拟数据" :aria-checked="showData" :class="{on:showData}" @click="showData=!showData"><span></span></button><div class="select-wrap zoom-select"><select aria-label="预览缩放" v-model="zoom"><option value="100">100%</option><option value="85">85%</option></select><PhCaretDown :size="12"/></div><button class="icon-button expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="17"/></button></div></div>
           <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}">
             <!-- <button v-if="view==='reports'" class="icon-button report-expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="19"/></button> -->
+            <!-- 【学习03】props 向下、事件向上：update-body 只将新 JSON 写进 App.body。
+                 ref 则用于从 App 向下调用 insertTemplate；两条通信方向不同。 -->
             <ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :demo="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" @update-body="v=>body=v"/></div>
           <!-- <div class="preview-footnote"><span><PhDatabase :size="13"/>仅使用模拟数据</span><span>{{view==='templates'?'布局修改实时呈现':'正文支持自由编辑'}}</span></div> -->
         </section>

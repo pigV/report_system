@@ -1,4 +1,6 @@
 <script setup>
+// 【学习05】这里只管菜单 UI：候选高亮、二级面板、键盘选择和定位；不直接改正文 JSON。
+// 选项确定后调用 props.onPick；它由 suggestion.js 注入，最终进入 menu.mjs 执行器。
 import { ref,computed,watch,nextTick,onMounted,onBeforeUnmount } from 'vue';
 import { PhTextT,PhTextH,PhTable,PhColumns,PhMinus,PhListBullets,PhDatabase,PhCaretRight,PhArrowLeft,PhImage } from '@phosphor-icons/vue';
 import KeyImagePicker from './KeyImagePicker.vue';
@@ -8,7 +10,9 @@ const imageOpen=ref(false),imagePicker=ref(null),imagePanel=ref(null),imageStyle
 let columnAnchor=null;
 const icons={text:PhTextT,heading:PhTextH,table:PhTable,columns:PhColumns,rule:PhMinus,list:PhListBullets,field:PhDatabase,image:PhImage};
 const visible=computed(()=>children.value??props.items);
+// slash 搜索结果改变后回到一级菜单，避免子菜单继续引用已变化的候选或锚点。
 watch(()=>props.items,()=>{selected.value=0;children.value=null;columnOpen.value=false;imageOpen.value=false});
+// 面板用屏幕坐标定位，考虑右边/下边空间不足；与编辑器内部文档 pos 完全不同。
 function positionPanel(){
  const imageAnchor=root.value?.querySelector('[aria-expanded="true"]');
  if(imageAnchor&&imageOpen.value){
@@ -28,6 +32,7 @@ function openColumns(anchor){
  columnAnchor=anchor;columnOpen.value=true;positionPanel();
 }
 function openImages(anchor){if(!anchor)return;columnOpen.value=false;imageOpen.value=true;nextTick(positionPanel)}
+// KeyImagePicker 只发 ID 数组；这里组装 action 交给通用执行器，保留原菜单插入范围。
 function insertImages(ids){props.onPick({action:'keyImages',imageIds:ids})}
 function selectItem(item,index,event){
  selected.value=index;
@@ -36,6 +41,7 @@ function selectItem(item,index,event){
  if(item.action==='columns'&&!children.value)openColumns(event.currentTarget);
  else columnOpen.value=false;
 }
+// 有些项只是展开面板（关键影像/业务字段/分栏），并非点一次就插入正文。
 function choose(item){
  if(!item)return;
  if(item.action==='keyImages'){openImages(root.value?.querySelector('[aria-selected=true]'));return}
@@ -56,7 +62,9 @@ onMounted(()=>{
  window.addEventListener('resize',schedulePanelPosition);window.addEventListener('scroll',schedulePanelPosition,true);
  nextTick(()=>{const host=root.value?.closest('.native-slash-host');if(host){hostObserver=new MutationObserver(schedulePanelPosition);hostObserver.observe(host,{attributes:true,attributeFilter:['style']})}});
 });
+// 临时组件销毁时清掉观察器/监听，防止反复打开 slash 菜单累积后台回调。
 onBeforeUnmount(()=>{cancelAnimationFrame(positionFrame);hostObserver?.disconnect();window.removeEventListener('resize',schedulePanelPosition);window.removeEventListener('scroll',schedulePanelPosition,true)});
+// 返回 true 表示该键已由菜单处理；否则让编辑器继续按正常键盘行为处理。
 function onKeyDown({event}){
  if(imageOpen.value&&imagePicker.value?.onKeyDown(event))return true;
  if(event.key==='ArrowRight'&&visible.value[selected.value]?.action==='keyImages'){choose(visible.value[selected.value]);return true}

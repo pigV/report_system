@@ -1,3 +1,6 @@
+/* 【学习10】打印有独立样式：界面用屏幕布局，纸张使用固定 mm/pt 单位。
+   .print-measure 离屏但保留布局用于实际测量；不能 display:none，否则算不到内容高度。
+   JS 先决定每页有哪些块，CSS 再负责 A4 尺寸、栏不换行、图片限高和末页签名贴底。 */
 .report-print-overlay{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;background:#e8ebeb;color:#253632;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif}
 .print-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 24px;background:#fff;border-bottom:1px solid #d9dfdd;flex:none}
 .print-toolbar h2{font-size:17px;margin:0 0 5px;font-weight:600}

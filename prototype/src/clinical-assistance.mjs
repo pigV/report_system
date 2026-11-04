@@ -1,3 +1,5 @@
+// 【学习02】侧栏的数据逻辑与 Vue UI 分开：历史返回副本，个人模板按医院/模拟医生存本机。
+// 不调用真实医疗接口；可用假的 storage 对象测试保存，不必操作用户浏览器。
 // Explicitly fictional reference material, scoped to the demo patient identities.
 const histories=[
   {id:'ct-aug',date:'2026-08-12',exam:'胸部 CT 平扫',findings:'双肺纹理清晰，气管及主要支气管通畅。纵隔未见明显肿大淋巴结。',impression:'胸部 CT 平扫未见明显异常。',doctor:'陈医生'},
@@ -26,6 +28,8 @@ export function filterTemplates(query='',category='全部'){
 // 个人模板仅保存在当前浏览器，并按医院和模拟医生隔离，不写回历史记录。
 const personalKey=(hospital,doctor)=>`report-demo:personal-templates:v1:${hospital}:${doctor}`;
 export function loadPersonalTemplates(storage,hospital,doctor){
+  // storage 是传入的依赖（浏览器给 localStorage，测试给替身），不是函数内固定访问 window。
+  // 以内置模板为底，只合并已保存的描述/诊断；不会凭存储里的未知 ID 新建条目。
   const raw=storage.getItem(personalKey(hospital,doctor));
   const overrides=raw?JSON.parse(raw):{};
   if(!overrides||typeof overrides!=='object'||Array.isArray(overrides))throw Error('个人模板数据格式异常');
@@ -35,6 +39,8 @@ export function loadPersonalTemplates(storage,hospital,doctor){
   });
 }
 export function savePersonalTemplate(storage,hospital,doctor,entry){
+  // localStorage 只能保存字符串；JSON.stringify/parse 在对象与字符串之间转换。
+  // 这里只更新已有条目的描述/诊断，不保存正文，不修改历史，也没有跨设备同步。
   const list=loadPersonalTemplates(storage,hospital,doctor);
   const target=list.find(t=>t.id===entry.id);
   if(!target||typeof entry.findings!=='string'||typeof entry.impression!=='string')throw Error('个人模板内容无效');
