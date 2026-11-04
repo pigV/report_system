@@ -1,0 +1,41 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>打印首页表头回归检查</title>
+<body><pre id="results">准备中</pre><div class="print-pages"></div><div class="print-measure"></div>
+<script type="module">
+import {buildPrintPages} from '/src/printing/render.mjs';
+import {seedTemplate} from '/src/report-model.mjs';
+import '/src/printing/print.css';
+import '/src/demo-report.css';
+import '@yiitap/vue/dist/vue.css';
+const p=text=>({type:'paragraph',content:[{type:'text',text}]});
+const cell=(type,text)=>({type,content:[p(text)]});
+const rows=[{type:'tableRow',content:[cell('tableHeader','表格项目'),cell('tableHeader','表格描述')]},...Array.from({length:45},(_,i)=>({type:'tableRow',content:[cell('tableCell',`项目${i}`),cell('tableCell',`描述${i}`)]}))];
+const paragraph='长文本内容'.repeat(800);
+const template=seedTemplate('a'),data={patient:{name:'打印测试'},exam:{},report:{}};
+const root=document.querySelector('.print-pages'),stage=document.querySelector('.print-measure');
+const failures=[];
+try{
+  for(const demo of [false,true]){
+    const shortPages=await buildPrintPages(stage,{template,data,demo,body:{type:'doc',content:[p('单页报告')]}});
+    if(shortPages.length!==1||!shortPages[0].querySelector(':scope > .print-header')||!shortPages[0].querySelector(':scope > .print-signature'))failures.push(`${demo}: single-page header or signature incorrect`);
+    const snapshot={template,data,demo,body:{type:'doc',content:[p(paragraph),{type:'table',content:rows}]}};
+    const pages=await buildPrintPages(stage,snapshot);root.replaceChildren(...pages);stage.replaceChildren();
+    if(pages.length<3)failures.push(`${demo}: expected at least three pages`);
+    if(!pages[0].querySelector(':scope > .print-header'))failures.push(`${demo}: first header missing`);
+    if(pages.slice(1).some(page=>page.querySelector(':scope > .print-header')))failures.push(`${demo}: continuation header present`);
+    if(pages.flatMap(page=>[...page.querySelectorAll('.print-body > p')]).map(node=>node.textContent).join('')!==paragraph)failures.push(`${demo}: paragraph text lost`);
+    const tables=pages.flatMap(page=>[...page.querySelectorAll('.print-body > table')]);
+    if(tables.length<2||tables.some(table=>!table.textContent.includes('表格项目')))failures.push(`${demo}: table header not repeated`);
+    const tableRows=tables.flatMap(table=>[...table.querySelectorAll('tr')].filter(row=>!row.querySelector('th')).map(row=>row.textContent));
+    if(JSON.stringify(tableRows)!==JSON.stringify(Array.from({length:45},(_,i)=>`项目${i}描述${i}`)))failures.push(`${demo}: table rows lost or reordered`);
+    if(pages.some((page,i)=>!page.querySelector('.print-page-number')||!!page.querySelector(':scope > .print-signature')!==(i===pages.length-1)))failures.push(`${demo}: page number or signature incorrect`);
+    for(const page of pages){
+      const body=page.querySelector('.print-body').getBoundingClientRect(),sheet=page.getBoundingClientRect(),footer=page.querySelector(':scope > .print-signature')?.getBoundingClientRect();
+      if(body.bottom>sheet.bottom-parseFloat(getComputedStyle(page).paddingBottom)+2||(footer&&body.bottom>footer.top+2))failures.push(`${demo}: content overflow or footer overlap`);
+    }
+    const first=pages[0].querySelector('.print-body').getBoundingClientRect(),second=pages[1].querySelector('.print-body').getBoundingClientRect();
+    if(second.top-pages[1].getBoundingClientRect().top>=first.top-pages[0].getBoundingClientRect().top-20)failures.push(`${demo}: continuation retains header space`);
+    if(pages[1].querySelector('.print-body > p').textContent.length<=pages[0].querySelector('.print-body > p').textContent.length)failures.push(`${demo}: continuation capacity not used`);
+  }
+}catch(error){failures.push(error.stack||String(error))}
+document.querySelector('#results').textContent=JSON.stringify({failures},null,2);
+</script></body></html>

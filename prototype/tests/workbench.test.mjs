@@ -4,10 +4,10 @@ import {EditorState} from '@tiptap/pm/state';
 import {history, undo} from '@tiptap/pm/history';
 import {bodySchema} from '../src/editor/body-schema.mjs';
 import {replaceSectionsTransaction} from '../src/editor/report-sections.mjs';
-import {imageLayout} from '../src/editor/report-images.mjs';
+import {imageLayout,removeColumnImage,imageColumnDropPlugin} from '../src/editor/report-images.mjs';
 import {loadPersonalTemplates, savePersonalTemplate, historyFor} from '../src/clinical-assistance.mjs';
 import {openStore} from '../server/store.mjs';
-import {readImageDrop} from '../src/key-images.mjs';
+import {IMAGE_DRAG_TYPE,readImageDrop} from '../src/key-images.mjs';
 
 const p=text=>({type:'paragraph',content:[{type:'text',text}]});
 const h=text=>({type:'heading',attrs:{level:2},content:[{type:'text',text}]});
@@ -49,6 +49,64 @@ test('drag payload rejects another patient/hospital and malformed images',()=>{
   const scope={hospital:'a',caseId:'a-1'};
   assert.equal(readImageDrop(JSON.stringify({...scope,id:'knee'}),scope).id,'knee');
   for(const raw of ['not-json',JSON.stringify({...scope,id:'unknown'}),JSON.stringify({hospital:'b',caseId:'a-1',id:'knee'}),JSON.stringify({hospital:'a',caseId:'a-2',id:'knee'})])assert.equal(readImageDrop(raw,scope),null);
+});
+test('removing a column image keeps other blocks and restores an empty editable column',()=>{
+  for(const extra of [[],[p('保留文字')]]){
+    const doc=bodySchema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
+      {type:'column',content:[{type:'reportImage',attrs:{imageId:'knee'}},...extra]},
+      {type:'column',content:[p('相邻栏')]},
+    ]}]});
+    let state=EditorState.create({doc,plugins:[history()]});
+    state=state.apply(removeColumnImage(state,2));
+    const column=state.doc.firstChild.firstChild;
+    assert.equal(column.childCount,1);
+    assert.equal(column.firstChild.type.name,'paragraph');
+    assert.equal(column.firstChild.textContent,extra.length?'保留文字':'');
+    assert.equal(state.doc.firstChild.child(1).textContent,'相邻栏');
+    state.doc.check();
+    assert.ok(undo(state,tr=>{state=state.apply(tr)}));
+    assert.deepEqual(state.doc.toJSON(),doc.toJSON());
+  }
+});
+test('dropping a scoped image into an empty column replaces the paragraph and is undoable',()=>{
+  const doc=bodySchema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
+    {type:'column',content:[{type:'paragraph'}]},{type:'column',content:[p('相邻栏')]},
+  ]}]});
+  let state=EditorState.create({doc,plugins:[history()]});
+  const column={},target={closest:selector=>selector==='[data-type="column"]'?column:null};
+  const view={editable:true,get state(){return state},dom:{contains:x=>x===column},posAtDOM:()=>2,dispatch:tr=>{state=state.apply(tr)}};
+  const scope={hospital:'a',caseId:'a-1'};
+  const plugin=imageColumnDropPlugin(()=>scope);
+  let prevented=false;
+  const event={target,preventDefault(){prevented=true},dataTransfer:{types:[IMAGE_DRAG_TYPE],getData:()=>JSON.stringify({...scope,id:'knee'})}};
+  assert.equal(plugin.props.handleDOMEvents.dragover(view,event),true);
+  assert.equal(event.dataTransfer.dropEffect,'copy');
+  assert.equal(plugin.props.handleDOMEvents.drop(view,event),true);
+  assert.equal(prevented,true);
+  assert.equal(state.doc.firstChild.firstChild.firstChild.attrs.imageId,'knee');
+  assert.equal(state.doc.firstChild.child(1).textContent,'相邻栏');
+  assert.ok(undo(state,tr=>{state=state.apply(tr)}));
+  assert.deepEqual(state.doc.toJSON(),doc.toJSON());
+  event.dataTransfer.getData=()=>JSON.stringify({hospital:'b',caseId:'a-1',id:'knee'});
+  assert.equal(plugin.props.handleDOMEvents.drop(view,event),true);
+  assert.deepEqual(state.doc.toJSON(),doc.toJSON());
+  view.editable=false;
+  assert.equal(plugin.props.handleDOMEvents.drop(view,event),false);
+});
+test('dropping an image into a column with text preserves its content',()=>{
+  const doc=bodySchema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
+    {type:'column',content:[p('保留文字')]},{type:'column',content:[p('相邻栏')]},
+  ]}]});
+  let state=EditorState.create({doc});
+  const column={},target={closest:selector=>selector==='[data-type="column"]'?column:null};
+  const block={contains:()=>true,getBoundingClientRect:()=>({top:100,bottom:120})};
+  const view={editable:true,get state(){return state},dom:{contains:x=>x===column},posAtDOM:()=>2,nodeDOM:()=>block,dispatch:tr=>{state=state.apply(tr)}};
+  const scope={hospital:'a',caseId:'a-1'};
+  const event={target,clientY:110,preventDefault(){},dataTransfer:{types:[IMAGE_DRAG_TYPE],getData:()=>JSON.stringify({...scope,id:'knee'})}};
+  assert.equal(imageColumnDropPlugin(()=>scope).props.handleDOMEvents.drop(view,event),true);
+  assert.equal(state.doc.firstChild.firstChild.firstChild.textContent,'保留文字');
+  assert.equal(state.doc.firstChild.firstChild.lastChild.attrs.imageId,'knee');
+  assert.equal(state.doc.firstChild.child(1).textContent,'相邻栏');
 });
 test('personal template saves are scoped and do not overwrite historical data',()=>{
   const values=new Map();const storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};

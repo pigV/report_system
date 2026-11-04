@@ -1,6 +1,7 @@
 import {imageLayout} from '../editor/report-images.mjs';
 import {insertKeyImagesTransaction} from '../editor/key-image-insert.mjs';
 import {closeHistory} from '@tiptap/pm/history';
+import {TextSelection} from '@tiptap/pm/state';
 const basics=[
  {label:'文本',action:'paragraph',icon:'text',search:'text paragraph 文本 段落'},
  {label:'一级标题',action:'h1',icon:'heading',search:'h1 heading 标题'},
@@ -28,30 +29,79 @@ export function bodyMenuItems(query){
  ];
  const q=query.trim().toLowerCase();return items.filter(item=>`${item.label} ${item.search??''} ${item.action}`.toLowerCase().includes(q));
 }
-export function executeNativeInsert(editor,range,item){
+function cursorAfterBoundary(tr,after){
+ const next=tr.doc.resolve(after).nodeAfter;
+ if(next?.type.name!=='paragraph')tr.insert(after,tr.doc.type.schema.nodes.paragraph.create());
+ tr.setSelection(TextSelection.create(tr.doc,after+1)).scrollIntoView();
+ return true;
+}
+function cursorAfterSelectedBlock(tr,type){
+ const {$from}=tr.selection;
+ let depth=$from.depth;
+ while(depth>0&&$from.node(depth).type.name!==type)depth--;
+ return depth?cursorAfterBoundary(tr,$from.after(depth)):true;
+}
+function cursorAfterLastInsertion(tr){
+ let after;
+ tr.steps.at(-1)?.getMap().forEach((_oldStart,_oldEnd,_newStart,newEnd)=>{after=newEnd});
+ return after===undefined?false:cursorAfterBoundary(tr,after);
+}
+export function executeNativeInsert(editor,range,item,options={}){
  if(item.action==='keyImages'){
   if(!editor.isEditable)return false;
-  const tr=insertKeyImagesTransaction(editor.state,range,item.imageIds??[]);
-  if(!tr)return false;
-  editor.view.dispatch(tr);
-  editor.view.dispatch(closeHistory(editor.state.tr));
-  editor.view.focus();
-  return true;
+   const tr=insertKeyImagesTransaction(editor.state,range,item.imageIds??[]);
+   if(!tr)return false;
+   if(options.afterBlock)cursorAfterLastInsertion(tr);
+   editor.view.dispatch(tr);
+   editor.view.dispatch(closeHistory(editor.state.tr));
+   editor.view.focus();
+   options.onInserted?.();
+   return true;
  }
  if(item.action==='customPictures'){editor.view.dom.dispatchEvent(new CustomEvent('report-custom-pictures',{bubbles:true,detail:{range}}));return true}
- const chain=editor.chain().focus().deleteRange(range);
- if(item.action.startsWith('pictures-'))return chain.insertContent([...imageLayout(item.rows,item.columns),{type:'paragraph'}]).run();
+ const chain=editor.chain().focus();
+ if(options.afterBlock)chain.command(({tr})=>{closeHistory(tr);return true});
+ chain.deleteRange(range);
+ if(item.action.startsWith('pictures-')){
+   const emptyColumns=['pictures-2-2','pictures-2-3'].includes(item.action);
+   const layout=imageLayout(item.rows,item.columns,{emptyColumns});
+   chain.insertContent(options.afterBlock?layout:[...layout,{type:'paragraph'}]);
+   if(options.afterBlock)chain.command(({tr})=>cursorAfterLastInsertion(tr));
+   const result=chain.run();
+   if(result)options.onInserted?.();
+   return result;
+ }
+ const finish=type=>{
+  if(options.afterBlock&&type)chain.command(({tr})=>cursorAfterSelectedBlock(tr,type));
+  const result=chain.run();
+  if(result)options.onInserted?.();
+  return result;
+ };
  switch(item.action){
- case 'paragraph':return chain.setParagraph().run();
- case 'h1':return chain.setHeading({level:1}).run();
- case 'h2':return chain.setHeading({level:2}).run();
- case 'h3':return chain.setHeading({level:3}).run();
- case 'blockquote':return chain.toggleBlockquote().run();
- case 'table':return chain.insertTable({rows:2,cols:3,withHeaderRow:false}).run();
- case 'columns':return chain.insertMultiColumn(item.columns).run();
- case 'rule':return chain.setHorizontalRule().run();
- case 'bulletList':return chain.toggleBulletList().run();
- case 'orderedList':return chain.toggleOrderedList().run();
+ case 'paragraph':if(options.afterBlock)chain.command(({commands})=>{commands.setParagraph();return true});else chain.setParagraph();return finish('paragraph');
+ case 'h1':chain.setHeading({level:1});return finish('heading');
+ case 'h2':chain.setHeading({level:2});return finish('heading');
+ case 'h3':chain.setHeading({level:3});return finish('heading');
+ case 'blockquote':chain.toggleBlockquote();return finish('blockquote');
+ case 'table':chain.insertTable({rows:2,cols:3,withHeaderRow:false});return finish('table');
+ case 'columns':chain.insertMultiColumn(item.columns).command(({tr})=>{
+  const {$from}=tr.selection;
+  let depth=$from.depth;
+  while(depth>0&&$from.node(depth).type.name!=='columns')depth--;
+  if(!depth)return false;
+  const after=$from.after(depth),next=tr.doc.resolve(after).nodeAfter;
+  if(options.afterBlock)return cursorAfterBoundary(tr,after);
+  if(!next?.isTextblock)tr.insert(after,tr.doc.type.schema.nodes.paragraph.create());
+  tr.setSelection(TextSelection.create(tr.doc,after+1)).scrollIntoView();
+  return true;
+ });return finish();
+ case 'rule':chain.setHorizontalRule();if(options.afterBlock)chain.command(({tr})=>{
+  const {$from}=tr.selection;
+  const after=$from.parent.isTextblock?$from.before():$from.pos+($from.nodeAfter?.type.name==='horizontalRule'?$from.nodeAfter.nodeSize:0);
+  return cursorAfterBoundary(tr,after);
+ });return finish();
+ case 'bulletList':chain.toggleBulletList();return finish('bulletList');
+ case 'orderedList':chain.toggleOrderedList();return finish('orderedList');
  case 'field':return chain.insertContent({type:'businessField',attrs:{fieldId:item.fieldId,label:item.label}}).run();
  }
  return false;

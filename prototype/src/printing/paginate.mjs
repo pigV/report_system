@@ -28,6 +28,7 @@ function normalizeRows(table){
   }));
 }
 export function preparePrintBody(body){
+  // 只清理打印副本：空影像位置不打印，空栏和单元格仍需合法的占位段落。
   function clean(node){
     if(node.type==='reportImage'&&!node.attrs?.imageId)return null;
     if(['tableCell','tableHeader'].includes(node.type))node={...node,attrs:{...node.attrs,colwidth:null}};
@@ -59,6 +60,7 @@ export function splitBlock(node,fits){
     return best?[withContent(node,sliceInline(node.content,0,best)),withContent(node,sliceInline(node.content,best,size))]:[null,node];
   }
   if(node.type==='columns'){
+    // 每栏独立续页，但保留栏顺序和空栏，避免长短不一时丢失内容。
     const heads=node.content.map(col=>withContent(col,[empty()])),tails=heads.map(clone);let progress=false,remaining=false;
     node.content.forEach((col,index)=>{
       const [head,tail]=splitFlow(col.content??[],content=>{const candidate=heads.map(clone);candidate[index]=withContent(col,content.length?content:[empty()]);return fits([withContent(node,candidate)])});
@@ -67,6 +69,7 @@ export function splitBlock(node,fits){
     return progress?[withContent(node,heads),remaining?withContent(node,tails):null]:[null,node];
   }
   if(node.type==='table'){
+    // 跨页时重复表头；普通行优先整体移至下一页，过高的行再按单元格拆分。
     const rows=node.content??[];let headerCount=0;
     while(headerCount<rows.length&&rows[headerCount].content.every(c=>c.type==='tableHeader'))headerCount++;
     const headers=rows.slice(0,headerCount),head=[...headers];
@@ -97,17 +100,19 @@ export function splitBlock(node,fits){
   return [null,node];
 }
 export function paginate(blocks,fits){
+  // 首页表头占用空间，续页的可用高度可能不同；签名作为最后一个内容块参与测量。
   const queue=clone(blocks),pages=[];let page=[],steps=0;
+  const fitsHere=nodes=>fits(nodes,pages.length),fitsNext=nodes=>fits(nodes,pages.length+1);
   while(queue.length){
     if(++steps>20000)throw Error('报告过长，无法完成分页，请减少内容后重试');
     const block=queue.shift();
-    if(block.type==='heading'&&queue.length&&page.length&&!fits([...page,block,firstLine(queue[0])])){pages.push(page);page=[]}
-    if(fits([...page,block])){page.push(block);continue}
+    if(block.type==='heading'&&queue.length&&page.length&&!fitsHere([...page,block,firstLine(queue[0])])){pages.push(page);page=[]}
+    if(fitsHere([...page,block])){page.push(block);continue}
     let headingStart=page.length;
     while(headingStart>0&&page[headingStart-1].type==='heading')headingStart--;
     if(headingStart>0&&headingStart<page.length){const headings=page.splice(headingStart);pages.push(page);page=[];queue.unshift(...headings,block);continue}
-    if(page.length&&headingStart>0&&fits([block])){
-      if(block.type==='printSignature'&&page.length>1&&fits([page.at(-1),block])){const last=page.pop();pages.push(page);page=[last,block]}
+    if(page.length&&headingStart>0&&fitsNext([block])){
+      if(block.type==='printSignature'&&page.length>1&&fitsNext([page.at(-1),block])){const last=page.pop();pages.push(page);page=[last,block]}
       else{pages.push(page);page=[block]}
       continue;
     }
@@ -115,9 +120,9 @@ export function paginate(blocks,fits){
       const rows=block.content??[];let count=0;
       while(count<rows.length&&rows[count].content.every(cell=>cell.type==='tableHeader'))count++;
       const firstRow=withContent(block,rows.slice(0,count+1));
-      if(!fits([...page,firstRow])&&fits([firstRow])){pages.push(page);page=[];queue.unshift(block);continue}
+      if(!fitsHere([...page,firstRow])&&fitsNext([firstRow])){pages.push(page);page=[];queue.unshift(block);continue}
     }
-    const [head,tail]=splitBlock(block,pieces=>fits([...page,...pieces]));
+    const [head,tail]=splitBlock(block,pieces=>fitsHere([...page,...pieces]));
     if(head){page.push(head);pages.push(page);page=[];if(tail)queue.unshift(tail)}
     else if(page.length){pages.push(page);page=[];queue.unshift(block)}
     else throw Error(`内容块（${block.type}）超出单页可用区域，无法安全分页；请调整字号、表头或布局`);

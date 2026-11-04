@@ -7,10 +7,12 @@ export function openNativeStore(filename,legacyTemplate){
   function getTemplate(id){
     if(!hospitals.some(h=>h.id===id))throw Error('医院不存在');
     const row=db.prepare('SELECT payload FROM native_templates WHERE hospital=?').get(id);
+    // 自由模板首次读取时由旧模板生成；独立保存后不再随旧模板变化。
     return row?JSON.parse(row.payload):fromLegacy(legacyTemplate(id));
   }
   return {getTemplate,saveTemplate(id,payload){
     const errors=validateNativeTemplate(id,payload);if(errors.length)throw Error(errors.join('；'));
+    // 在同一写事务内检查版本并保存，避免两个窗口同时覆盖彼此的修改。
     db.exec('BEGIN IMMEDIATE');
     try {
       const previous=getTemplate(id);

@@ -1,0 +1,144 @@
+/* Interface typography is kept separate from the paginated report styles. */
+:root {
+  font-size: 16px;
+}
+
+@media screen {
+  .app-shell {
+    zoom: 1.25;
+  }
+
+  .template-editor .field-card.sort-ghost {
+    position: fixed;
+  }
+
+  :is(.body-editor, .native-editor) [data-tippy-root]:has(.side-menu) {
+    pointer-events: none;
+  }
+
+  :is(.body-editor, .native-editor) .side-menu {
+    pointer-events: auto;
+  }
+}
+
+@media screen and (max-width: 1550px) {
+  .native-grid {
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+  }
+}
+
+@media screen and (max-width: 1125px) {
+  .workspace-grid,
+  .native-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell.report-mode .doctor-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .doctor-workspace > .preview-panel {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .doctor-workspace > .personal-sidebar {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+  }
+
+  .doctor-workspace > .evidence-sidebar {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media screen and (max-width: 750px) {
+  .app-shell.report-mode .doctor-workspace {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doctor-workspace > * {
+    width: 100%;
+  }
+}
+
+.app-shell :is(.sidebar-label, .demo-label, .profile div span, .save-status,
+  .workspace-note, .advanced-controls, .advanced-controls select, .mapping-hint,
+  .config-bottom, .preview-footnote, .heading-settings p, .field-actions > span,
+  .native-scope-note, .native-editor-hint, .native-editor-foot, .native-preview-foot) {
+  font-size: 13px;
+}
+
+.app-shell :is(.primary-button, .secondary-button, .breadcrumb, .layout-select select,
+  .heading-settings label, .heading-settings input, .field-actions .secondary-button,
+  .remove-field-button, .layout-field-name, .layout-field-name input, .binding-actions select,
+  .mapping-table-head, .field-name-input, .mapping-select select, .empty-fields, .empty-mapping,
+  .native-tabs > button.native-binding-link, .native-toolbar select, .native-binding-head,
+  .native-binding-row, .native-binding-row input, .native-binding-row select,
+  .native-new-field input, .native-new-field select, .native-binding-row .secondary-button,
+  .native-new-field button, .native-dialog p.native-binding-help, .app-dialog p) {
+  font-size: 14px;
+}
+
+.app-shell :is(.field-label, .section-tabs > button[role=tab], .native-tabs > button) {
+  font-size: 15px;
+}
+
+.app-shell .report-action-bar button {
+  flex-basis: 80px;
+  min-height: 64px;
+  font-size: 14px;
+}
+
+.app-shell :is(.personal-sidebar, .evidence-sidebar, .personal-template-list > button,
+  .detail-heading h3, .clinical-text-field > span, .clinical-text-field textarea,
+  .detail-actions button, .append-fields > strong, .append-fields textarea,
+  .key-image strong, .exam-list > button > span, .exam-list strong, .exam-list p,
+  .panel-error, .template-search input) {
+  font-size: 14px;
+}
+
+.app-shell :is(.assistance-title h2, .doctor-workspace .body-editor .tiptap) {
+  font-size: 16px;
+}
+
+.app-shell .doctor-workspace .body-editor .tiptap h2 {
+  font-size: 19px;
+}
+
+.app-shell :is(.assistance-title .mock-badge, .list-heading, .personal-owner,
+  .detail-dirty, .detail-hint, .append-fields label, .panel-guide, .key-image small,
+  .image-disclaimer, .exam-list small, .report-image-slot figcaption, .image-slot-target) {
+  font-size: 13px;
+}
+
+.app-shell .detail-actions {
+  flex-wrap: wrap;
+}
+
+.app-shell .exam-list p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .native-editor .tiptap {
+  font-size: 16px !important;
+}
+
+.app-shell :is(.native-editor .tiptap table, .native-editor .tiptap td p,
+  .native-editor .tiptap th p, .native-field-token) {
+  font-size: 14px;
+}
+
+.native-slash-menu,
+body:has(.native-workspace) .slash-tippy .o-slash-view {
+  font-size: 14px;
+}
+
+.native-slash-menu :is(.native-slash-title, .native-slash-group, .native-slash-help),
+body:has(.native-workspace) .slash-tippy .o-tips {
+  font-size: 13px;
+}

@@ -16,7 +16,8 @@ export function seedTemplate(hospitalId) {
   return normalizeBindings({hospitalId,hospitalName:hospitals.find(h=>h.id===hospitalId).name,schemaVersion:1,revision:1,title:'医学影像检查报告',header:doc('header'),footer:doc('footer'),bindings:Object.fromEntries([...regions[hospitalId].header,...regions[hospitalId].footer].map(id=>[id,fieldDefinitions[id][1]]))});
 }
 export const fieldsFor = doc => doc?.content?.flatMap(n=>n.type==='reportGrid' ? n.content ?? []:[]) ?? [];
-// Snapshot legacy row metadata once; an existing (even empty) list is authoritative.
+// 旧模板没有独立的绑定行时，只在首次读取时从布局和已有路径补齐。
+// 一旦 bindingFields 已存在，即使是空数组也代表用户的选择，不能再从布局重建。
 export function normalizeBindings(template) {
   const next=clone(template);
   if(next.bindingFields!==undefined)return next;
@@ -49,6 +50,7 @@ export function moveBindingField(template,fromId,toId) {
   return next;
 }
 export function readPath(data,path) {
+  // 绑定路径只能访问业务数据的自有属性，避免通过原型链读取意外内容。
   if (typeof path !== 'string' || path.split('.').some(x=>['__proto__','constructor','prototype'].includes(x))) return '—';
   let value=data;
   for(const key of path.split('.')) { if(value===null || typeof value!=='object' || !Object.hasOwn(value,key)) return '—'; value=value[key]; }
@@ -65,6 +67,7 @@ export const validFieldId = id => typeof id==='string' && /^[a-zA-Z][a-zA-Z0-9_-
 export function addTemplateField(template,region,id) {
   if(!['header','footer'].includes(region) || !validFieldId(id)) throw new Error('字段标识无效');
   if(['header','footer'].some(r=>fieldsFor(template[r]).some(f=>f.attrs.fieldId===id))) throw new Error('存在重复字段');
+  // 布局字段与绑定行独立管理：新增或删除布局字段都不自动修改 bindings。
   const next=clone(template), grid=next[region].content[0];
   grid.content??=[];
   grid.content.push({type:'reportField',attrs:{fieldId:id,label:'新字段',bold:false,textAlign:'left',span:1}});
@@ -116,7 +119,7 @@ export function validateTemplate(hospitalId,t) {
 export function makeCases(hospitalId) {
   const a=hospitalId==='a';
   return [
-    {id:`${hospitalId}-1`,label:'林晓 · 胸部 CT',data:{patient:{name:'林晓',gender:'女',age:'32岁',no:a?'A000128':'B000082'},exam:{no:'CT20261101001',item:'胸部 CT',part:'胸部',date:'2026-11-01'},report:{doctor:'陈医生',reviewer:'李医生',date:'2026-11-01'}}},
+    {id:`${hospitalId}-1`,label:'毛豆 · 胸部 CT',data:{patient:{name:'毛豆',gender:'雌',age:'2岁',no:a?'A000128':'B000082'},exam:{no:'CT20261101001',item:'胸部 CT',part:'胸部',date:'2026-11-01'},report:{doctor:'陈医生',reviewer:'李医生',date:'2026-11-01'}}},
     {id:`${hospitalId}-2`,label:'陈小宇 · 空值示例',data:{patient:{name:'陈小宇',gender:'男',age:0,no:a?'A000129':'B000083'},exam:{no:'US20261101002',item:'超声检查',part:'腹部',date:'2026-11-01'},report:{doctor:'王医生',reviewer:null,date:'2026-11-01'}}},
   ];
 }

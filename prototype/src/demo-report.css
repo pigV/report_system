@@ -1,0 +1,35 @@
+.demo-report .demo-heading{position:relative;min-height:110px;padding:8px 90px 24px;text-align:center;border-bottom:2px solid #222}
+.demo-report .demo-heading h2{font-size:25px;line-height:1.5}
+.demo-report .demo-heading h3{font-size:20px;line-height:1.5;font-weight:400}
+.demo-logo{position:absolute;left:8px;top:2px;width:86px;height:72px;overflow:hidden}
+.demo-logo img{position:absolute;left:-7.5%;top:-26%;width:115%;max-width:none;height:auto}
+.demo-report .demo-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 12px;padding:16px 0;border-bottom:2px solid #222}
+.demo-report .demo-fields .paper-field{display:block;min-width:0;line-height:1.7}
+.demo-report .demo-fields .paper-label,.demo-report .demo-fields .paper-value{font-size:16px;color:#222}
+.demo-report .demo-fields .paper-label::after{content:"：";margin-right:4px}
+.demo-field-wide{grid-column:1 / -1}
+.demo-report .demo-footer{margin-top:30px;font-size:15px;line-height:1.6;color:#222}
+.demo-signature{display:flex;align-items:center;gap:12px;min-height:55px}
+.demo-signature img{display:block;width:100px;height:50px;object-fit:contain}
+.demo-footer-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #333;padding-top:10px}
+.key-image-list{max-height:225px;overflow-y:auto;overscroll-behavior:contain}
+.body-editor .tiptap:focus{box-shadow:none!important}
+.body-editor .ProseMirror .is-empty:before{content:none}
+
+.demo-print-heading{position:relative;min-height:30mm;padding:2mm 27mm 0}
+.demo-print-heading .demo-logo{left:0;top:0;width:25mm;height:21mm}
+.demo-print-header h1{font-family:"Songti SC","STSong",serif;font-size:20pt;font-weight:700}
+.demo-print-header h2{font-family:"Songti SC","STSong",serif;font-size:15pt;font-weight:400;margin-bottom:5mm}
+.demo-print-header .demo-print-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:2mm 4mm;border-color:#222;padding:4mm 0;font-family:"Songti SC","STSong",serif}
+.demo-print-fields .print-field-label{display:inline;margin:0;color:#222;font-size:11pt}
+.demo-print-fields .print-field-value{font-size:11pt}
+.demo-print-footer{border:0;padding:0;font-family:"Songti SC","STSong",serif;font-size:10pt;color:#222}
+.demo-print-footer .demo-signature{min-height:15mm;gap:3mm}
+.demo-print-footer .demo-signature img{width:26mm;height:13mm}
+.demo-print-footer .demo-footer-meta{border-color:#333;padding-top:3mm;gap:3mm}
+@media(max-width:600px){
+  .demo-report .demo-heading{padding-left:70px;padding-right:25px}
+  .demo-report .demo-heading h2{font-size:20px}
+  .demo-report .demo-logo{width:65px;height:55px}
+  .demo-report .demo-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}

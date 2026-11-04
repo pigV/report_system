@@ -22,6 +22,7 @@ const text=value=>({type:'text',text:value});
 const paragraph=(content=[],attrs={})=>({type:'paragraph',attrs,content});
 const token=(id,label)=>({type:'businessField',attrs:{fieldId:id,label}});
 export function fromLegacy(source){
+  // 转换为独立富文档时保留原绑定；布局中尚无绑定行的字段也需要能被插入。
   const fields=(source.bindingFields??[]).map(f=>({...f}));
   for(const region of ['header','footer'])for(const f of fieldsFor(source[region]))if(!fields.some(x=>x.id===f.attrs.fieldId))fields.push({id:f.attrs.fieldId,label:f.attrs.label,region});
   function grid(region){
@@ -72,4 +73,5 @@ export function validateNativeTemplate(id,t){
   }catch(e){errors.push(`${region==='header'?'表头':'表尾'}文档无效：${e.message}`)}
   return [...new Set(errors)];
 }
+// 保存响应返回时若用户已继续编辑，只合并服务端版本信息，保留未保存内容。
 export function mergeNativeSave(current,submitted,saved){return JSON.stringify(current)===JSON.stringify(submitted)?saved:{...current,revision:saved.revision,updatedAt:saved.updatedAt}}

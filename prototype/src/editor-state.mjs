@@ -1,5 +1,6 @@
 import { fieldsFor, clone, validFieldId } from './report-model.mjs';
 export function mergeSavedTemplate(current,submitted,saved) {
+  // 保存请求期间可能继续编辑：只更新服务端版本，不能覆盖较新的本地内容。
   if(JSON.stringify(current)===JSON.stringify(submitted)) return clone(saved);
   return {...clone(current),revision:saved.revision,updatedAt:saved.updatedAt};
 }
@@ -20,7 +21,7 @@ export function fieldColumn(doc,id) {
   return 0;
 }
 
-// Editor transactions (including delete and undo) own layout only.
+// 编辑器事务（包括删除与撤销）只更新布局，不能回滚独立维护的绑定元数据。
 export function applyRegionEdit(template,region,doc) {
   return {...template,[region]:doc};
 }

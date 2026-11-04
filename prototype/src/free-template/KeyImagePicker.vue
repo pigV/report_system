@@ -1,10 +1,12 @@
 <script setup>
-import {ref} from 'vue';
+import {computed,ref} from 'vue';
 import {PhCheck} from '@phosphor-icons/vue';
 import {keyImages} from '../key-images.mjs';
+import {keyImageGrid} from '../editor/key-image-insert.mjs';
 defineProps({insideColumn:Boolean});
 const emit=defineEmits(['insert','close']);
 const selected=ref([]),active=ref(0);
+const grid=computed(()=>keyImageGrid(selected.value.length));
 function toggle(id){selected.value=selected.value.includes(id)?selected.value.filter(value=>value!==id):[...selected.value,id]}
 function insert(){if(selected.value.length)emit('insert',[...selected.value])}
 function onKeyDown(event){
@@ -31,7 +33,7 @@ defineExpose({onKeyDown});
       </button>
       <p v-if="!keyImages.length" class="key-image-empty">暂无关键影像</p>
     </div>
-    <footer><span aria-live="polite">已选 {{selected.length}} 张<span v-if="selected.length"> · {{insideColumn?'插入当前栏':`将生成 ${selected.length} 列`}}</span></span><button type="button" class="key-image-clear" :disabled="!selected.length" @click="selected=[]">清空</button><button type="button" class="key-image-insert" :disabled="!selected.length" @click="insert">插入 {{selected.length}} 张</button></footer>
+    <footer><span aria-live="polite">已选 {{selected.length}} 张<span v-if="selected.length"> · {{insideColumn?'插入当前栏':grid.rows===1?`将生成 ${grid.columns} 列`:`将生成 ${grid.rows} 行 × ${grid.columns} 列`}}</span></span><button type="button" class="key-image-clear" :disabled="!selected.length" @click="selected=[]">清空</button><button type="button" class="key-image-insert" :disabled="!selected.length" @click="insert">插入 {{selected.length}} 张</button></footer>
     <p class="key-image-help">↑ ↓ 选择 · 空格勾选 · Enter 插入</p>
   </section>
 </template>

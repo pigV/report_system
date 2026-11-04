@@ -64,3 +64,15 @@ test('a normal first row moves intact to a fresh page',()=>{
   const pages=paginate([p('b'.repeat(80)),table],fit);
   assert.equal(pages[0].length,1);assert.equal(text(pages[1][0].content[0]).length,50);assert.equal(text(pages.flat()),'b'.repeat(80)+'a'.repeat(150));
 });
+
+test('continuation pages use their larger capacity without losing text',()=>{
+  const source=[p('a'.repeat(250))];
+  const pages=paginate(source,(nodes,pageIndex)=>height(nodes)<=(pageIndex===0?5:10));
+  assert.deepEqual(pages.map(page=>text(page).length),[50,100,100]);
+  assert.equal(text(pages.flat()),text(source));
+});
+
+test('an intact block moves to a continuation page when it fits there',()=>{
+  const pages=paginate([p('a'.repeat(40)),p('b'.repeat(60))],(nodes,pageIndex)=>height(nodes)<=(pageIndex===0?5:10));
+  assert.deepEqual(pages.map(page=>page.map(text)),[['a'.repeat(40)],['b'.repeat(60)]]);
+});

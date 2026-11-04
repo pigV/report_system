@@ -8,4 +8,5 @@ import './free-template/native-template.css';
 // Keep application overrides after the editor and legacy workspace styles.
 import './reference-theme.css';
 import './report-workbench.css';
+import './readable-type.css';
 createApp(App).use(YiiEditorPlugin).mount('#root');

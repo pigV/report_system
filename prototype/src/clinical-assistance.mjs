@@ -5,6 +5,7 @@ const histories=[
   {id:'xray-nov',date:'2025-11-20',exam:'胸部 X 线',findings:'胸廓对称，双肺纹理清晰，心影大小在正常范围。',impression:'心肺未见明显异常。',doctor:'王医生'},
 ];
 export function historyFor(hospitalId,caseId,patientNo){
+  // 演示历史同时匹配医院、病例和患者身份，其他病例显示空历史。
   const patient={a:'A000128',b:'B000082'}[hospitalId];
   return patient && caseId===`${hospitalId}-1` && patientNo===patient ? structuredClone(histories) : [];
 }
@@ -22,6 +23,7 @@ export function filterTemplates(query='',category='全部'){
   const term=query.trim().toLocaleLowerCase();
   return templates.filter(t=>(category==='全部'||t.category===category) && `${t.name} ${t.keywords}`.toLocaleLowerCase().includes(term)).map(t=>({...t}));
 }
+// 个人模板仅保存在当前浏览器，并按医院和模拟医生隔离，不写回历史记录。
 const personalKey=(hospital,doctor)=>`report-demo:personal-templates:v1:${hospital}:${doctor}`;
 export function loadPersonalTemplates(storage,hospital,doctor){
   const raw=storage.getItem(personalKey(hospital,doctor));

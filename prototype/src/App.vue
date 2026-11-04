@@ -20,17 +20,16 @@ const reportActions=[
   {label:'检查单',icon:PhFileText}, {label:'病历资料',icon:PhFolder},
   {label:'收藏',icon:PhStar}, {label:'相似病例',icon:PhMagnifyingGlass},
   {label:'危急值',icon:PhWarning}, {label:'编辑检查',icon:PhPencilSimple},
-  {label:'打印',icon:PhPrinter}, {label:'导出报告',icon:PhExport}
+  {label:'打印',icon:PhPrinter}, {label:'提交报告',icon:PhExport}
 ];
-function openPrint(){if(loading.value||saving.value||view.value!=='reports'||!paperData.value)return;closeModal();dialog.value?.close();printSnapshot.value=clone({template:paperTemplate.value,data:paperData.value,body:body.value})}
+function openPrint(){if(loading.value||saving.value||view.value!=='reports'||!paperData.value)return;closeModal();dialog.value?.close();printSnapshot.value=clone({template:paperTemplate.value,data:paperData.value,body:body.value,demo:true})}
 function printShortcut(e){if(view.value==='reports'&&!printSnapshot.value&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrint()}}
 const reportPaper=ref(null),personalRef=ref(null),personalDirty=ref(false),selectedImage=ref('');
 watch([hospital,caseId],()=>selectedImage.value='');
 const nativeRef=ref(null),nativeDirty=ref(false),nativeBusy=ref(false),nativeError=ref('');
 function insertTemplate(content){
   if(loading.value||saving.value||view.value!=='reports')return;
-  if(reportPaper.value?.insertTemplate(content))notify('描述和诊断已替换，可撤销；其他内容保留');
-  else error.value='正文编辑器尚未就绪，请稍后重试';
+  reportPaper.value?.insertTemplate(content);
 }
 let loadVersion=0,toastTimer;
 const bindingToAdd=ref('');
@@ -63,6 +62,7 @@ async function api(path,method='GET',payload){
 }
 function notify(message){toast.value=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.value='',3500)}
 async function load(){
+  // 医院或视图切换可能并发触发加载，只允许最后一次请求更新界面。
   const token=++loadVersion;loading.value=true;error.value='';data.value=null;report.value=null;
   try {
     const [t,list]=await Promise.all([api('template'),api('cases')]);
@@ -123,6 +123,7 @@ async function save(){
       const submitted=clone(template.value);
       const saved=await api('template','PUT',submitted);template.value=mergeSavedTemplate(template.value,submitted,saved);baseline.value=JSON.stringify(saved);notify(templateDirty.value?'已保存提交的版本，后续修改尚未保存':'模板已保存，可在报告演示中使用');
     }else{
+      // 提交正文和当前报告上下文；服务端用版本防冲突，并保留已有报告快照。
       const submitted=clone(body.value);
       const saved=await api(`reports/${caseId.value}`,'PUT',{body:submitted,context:{template:clone(paperTemplate.value),caseId:caseId.value,reportRevision:report.value?.revision??(report.value?1:0)}});report.value=saved;bodyBaseline.value=JSON.stringify(submitted);notify(bodyDirty.value?'已保存提交的正文，后续输入尚未保存':'报告正文已保存');
     }
@@ -211,8 +212,10 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
             </button>
           </div>
           <div v-if="view==='templates'" class="preview-toolbar"><h2>整页预览</h2><div class="preview-options"><span>模拟数据</span><button class="toggle" role="switch" aria-label="显示模拟数据" :aria-checked="showData" :class="{on:showData}" @click="showData=!showData"><span></span></button><div class="select-wrap zoom-select"><select aria-label="预览缩放" v-model="zoom"><option value="100">100%</option><option value="85">85%</option></select><PhCaretDown :size="12"/></div><button class="icon-button expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="17"/></button></div></div>
-          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}"><button v-if="view==='reports'" class="icon-button report-expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="19"/></button><ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" @update-body="v=>body=v"/></div>
-          <div class="preview-footnote"><span><PhDatabase :size="13"/>仅使用模拟数据</span><span>{{view==='templates'?'布局修改实时呈现':'正文支持自由编辑'}}</span></div>
+          <div class="paper-container" :class="{reduced:zoom==='85'&&view==='templates'}">
+            <!-- <button v-if="view==='reports'" class="icon-button report-expand-button" title="放大预览" aria-label="放大预览" @click="modal='preview'"><PhArrowsOutSimple :size="19"/></button> -->
+            <ReportPaper ref="reportPaper" :template="paperTemplate" :data="paperData" :show-data="showData" :doctor="view==='reports'" :demo="view==='reports'" :scope="{hospital,caseId}" :selected-image="selectedImage" :body="body" :body-key="`${hospital}-${caseId}-${bodyKey}`" @update-body="v=>body=v"/></div>
+          <!-- <div class="preview-footnote"><span><PhDatabase :size="13"/>仅使用模拟数据</span><span>{{view==='templates'?'布局修改实时呈现':'正文支持自由编辑'}}</span></div> -->
         </section>
         <EvidenceSidebar v-if="view==='reports'" :hospital="hospital" :case-id="caseId" :data="paperData" :disabled="saving" :selected-image="selectedImage" @insert="insertTemplate" @select-image="id=>selectedImage=id"/>
       </div>
@@ -223,7 +226,7 @@ onBeforeUnmount(()=>{window.removeEventListener('beforeunload',beforeUnload);doc
     <template v-if="modal==='unsaved'"><div class="dialog-heading"><h2>保存这次更改？</h2><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><p>当前{{view!=='reports'?'模板配置':'报告正文或个人模板'}}有未保存的更改。离开前，你可以保存或放弃更改。</p><div v-if="view==='native'?nativeError:error" class="dialog-error" role="alert">{{view==='native'?nativeError:error}}</div><div class="dialog-actions"><button class="secondary-button" :disabled="saving||nativeBusy" @click="closeModal">继续编辑</button><button class="secondary-button" :disabled="saving||nativeBusy" @click="confirmSwitch(false)">放弃更改</button><button class="primary-button" :disabled="saving||nativeBusy" @click="confirmSwitch(true)">{{saving||nativeBusy?'保存中…':'保存并切换'}}</button></div></template>
     <template v-if="modal==='reset'"><div class="dialog-heading"><h2>恢复已保存的配置？</h2><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><p>将放弃本次未保存的修改，恢复到该医院上次保存的模板。</p><div class="dialog-actions"><button class="secondary-button" @click="closeModal">取消</button><button class="primary-button" @click="reset">恢复配置</button></div></template>
     <template v-if="modal==='json'"><div class="dialog-heading"><div><h2>模板文档</h2><p>Tiptap JSON · 当前编辑内容</p></div><button class="icon-button" aria-label="关闭对话框" @click="closeModal"><PhX :size="20"/></button></div><pre>{{JSON.stringify(template,null,2)}}</pre></template>
-    <template v-if="modal==='preview'"><div class="dialog-heading"><div><h2>{{hospitalName}} · 整页预览</h2><p>{{showData?'模拟数据展示':'字段占位符展示'}}</p></div><button class="icon-button" aria-label="关闭预览" @click="closeModal"><PhX :size="20"/></button></div><ReportPaper :template="paperTemplate" :data="paperData" :show-data="showData" :body="body" :readonly-body="view==='reports'"/></template>
+    <template v-if="modal==='preview'"><div class="dialog-heading"><div><h2>{{hospitalName}} · 整页预览</h2><p>{{showData?'模拟数据展示':'字段占位符展示'}}</p></div><button class="icon-button" aria-label="关闭预览" @click="closeModal"><PhX :size="20"/></button></div><ReportPaper :template="paperTemplate" :data="paperData" :show-data="showData" :body="body" :demo="view==='reports'" :readonly-body="view==='reports'"/></template>
   </dialog>
 </div>
 <ReportPrintPreview v-if="printSnapshot" :snapshot="printSnapshot" @close="printSnapshot=null"/>

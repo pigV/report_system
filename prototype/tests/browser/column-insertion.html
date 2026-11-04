@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>分栏插入光标测试</title></head>
+<body><div id="workspace" class="native-editor body-editor body-editor-editable"><div id="editor"></div></div>
+<script type="module">
+import '@yiitap/vue/dist/vue.css';
+import '/src/clinical-workspace.css';
+import '/src/free-template/native-template.css';
+import '/src/report-workbench.css';
+import {Editor} from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import {TextSelection,NodeSelection} from '@tiptap/pm/state';
+import {bodyExtensions} from '/src/editor/body-schema.mjs';
+import {nativeExtensions} from '/src/free-template/model.mjs';
+import {executeNativeInsert} from '/src/free-template/menu.mjs';
+let editor;
+window.prepare=kind=>{
+  editor?.destroy();
+  editor=new Editor({element:document.querySelector('#editor'),extensions:[StarterKit.configure({codeBlock:false,horizontalRule:false,link:false,blockquote:false,trailingNode:false}),...(kind==='report'?bodyExtensions():nativeExtensions())],content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'/'}]}]}});
+  editor.commands.setTextSelection(2);
+  return executeNativeInsert(editor,{from:1,to:2},{action:'columns',columns:3});
+};
+window.prepareImages=()=>{
+  editor?.destroy();
+  editor=new Editor({element:document.querySelector('#editor'),extensions:[StarterKit.configure({codeBlock:false,horizontalRule:false,link:false,blockquote:false,trailingNode:false}),...bodyExtensions()],content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'/'}]}]}});
+  editor.commands.setTextSelection(2);
+  return executeNativeInsert(editor,{from:1,to:2},{action:'keyImages',imageIds:['demo-113623','demo-113630','demo-113634','demo-113639']},{afterBlock:true});
+};
+window.result=()=>({doc:editor.getJSON(),position:editor.state.selection.from,focused:editor.view.hasFocus(),textSelection:editor.state.selection instanceof TextSelection,selectedNode:editor.state.selection instanceof NodeSelection?editor.state.selection.node.type.name:null,parent:editor.state.selection.$from.parent.type.name,rootIndex:editor.state.selection.$from.index(0)});
+window.columnPoint=index=>{const el=document.querySelectorAll('[data-type="column"]')[index],r=el.getBoundingClientRect();return {x:r.left+3,y:(r.top+r.bottom)/2,target:document.elementFromPoint(r.left+3,(r.top+r.bottom)/2)?.dataset.type}};
+window.edgePoint=type=>{const el=document.querySelector(type==='column'?'[data-type="column"]':'[data-type="column-container"]'),r=el.getBoundingClientRect();const x=type==='column'?r.left+0.5:r.left+r.width/2,y=type==='column'?r.top+r.height/2:r.top+2;return {x,y,target:document.elementFromPoint(x,y)?.dataset.type}};
+window.imagePoint=selector=>{const el=document.querySelector(selector),r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,target:document.elementFromPoint(x,y)?.className}};
+window.ready=true;
+</script></body></html>

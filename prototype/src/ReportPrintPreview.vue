@@ -2,7 +2,9 @@
 import {ref,onMounted,onBeforeUnmount,nextTick} from 'vue';
 import {PhPrinter,PhX,PhCircleNotch} from '@phosphor-icons/vue';
 import {buildPrintPages,waitForPrintResources} from './printing/render.mjs';
+import {demoReportSubtitle} from './demo-report.mjs';
 import './printing/print.css';
+import './demo-report.css';
 const props=defineProps({snapshot:{type:Object,required:true}});
 const emit=defineEmits(['close']);
 const stage=ref(null),pagesRoot=ref(null),closeButton=ref(null),busy=ref(true),printing=ref(false),error=ref(''),pageCount=ref(0);
@@ -26,7 +28,7 @@ async function print(){
   printing.value=true;
   try{
     await waitForPrintResources(pagesRoot.value,controller.signal);
-    restoreTitle=document.title;document.title=`${props.snapshot.data?.patient?.name??'患者'}-${props.snapshot.template.title}`;
+    restoreTitle=document.title;document.title=`${props.snapshot.data?.patient?.name??'患者'}-${props.snapshot.demo?demoReportSubtitle:props.snapshot.template.title}`;
     window.print();
   }catch(e){if(e.name!=='AbortError')error.value=`无法打印：${e.message}`}
   finally{printing.value=false;if(restoreTitle!==null){document.title=restoreTitle;restoreTitle=null}}
@@ -45,7 +47,7 @@ onBeforeUnmount(()=>{controller?.abort();document.removeEventListener('keydown',
 </script>
 <template>
 <Teleport to="body"><section class="report-print-overlay" role="dialog" aria-modal="true" aria-labelledby="report-print-title">
-  <header class="print-toolbar"><div><h2 id="report-print-title">打印预览 <span v-if="pageCount">· {{pageCount}} 页</span></h2><p>A4 纵向 · 当前编辑内容 · 每页患者信息，末页签署信息</p><p>系统打印请选择 A4、100% 缩放，并关闭浏览器页眉和页脚。</p></div><div class="print-toolbar-actions"><button class="primary-button" :disabled="busy||!!error||printing" @click="print"><PhPrinter :size="17"/>{{printing?'正在打开打印…':'打印 / 保存 PDF'}}</button><button ref="closeButton" class="secondary-button" :disabled="printing" @click="emit('close')"><PhX :size="17"/>返回编辑</button></div></header>
+  <header class="print-toolbar"><div><h2 id="report-print-title">打印预览 <span v-if="pageCount">· {{pageCount}} 页</span></h2><p>A4 纵向 · 当前编辑内容 · 首页患者信息，末页签署信息</p><p>系统打印请选择 A4、100% 缩放，并关闭浏览器页眉和页脚。</p></div><div class="print-toolbar-actions"><button class="primary-button" :disabled="busy||!!error||printing" @click="print"><PhPrinter :size="17"/>{{printing?'正在打开打印…':'打印 / 保存 PDF'}}</button><button ref="closeButton" class="secondary-button" :disabled="printing" @click="emit('close')"><PhX :size="17"/>返回编辑</button></div></header>
   <div v-if="busy" class="print-status" role="status"><PhCircleNotch :size="25" class="spin"/><p>正在加载影像并计算分页…</p></div>
   <div v-else-if="error" class="print-status" role="alert"><p>{{error}}</p><button class="secondary-button" @click="prepare">重新生成预览</button></div>
   <div class="print-pages-scroll" v-show="!busy&&!error"><div ref="pagesRoot" class="print-pages"></div></div>

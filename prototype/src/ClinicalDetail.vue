@@ -19,6 +19,6 @@ function append(){
   <label class="clinical-text-field"><span>诊断</span><textarea :aria-label="`${label}诊断`" :value="modelValue.impression" :disabled="disabled" @input="update('impression',$event.target.value)" spellcheck="false"/></label>
   <div v-if="adding" class="append-fields"><strong>追加内容</strong><label>补充描述<textarea v-model="extraFindings" :aria-label="`${label}补充描述`" :disabled="disabled"/></label><label>补充诊断<textarea v-model="extraImpression" :aria-label="`${label}补充诊断`" :disabled="disabled"/></label><div class="detail-actions"><button :disabled="disabled" @click="adding=false">取消</button><button class="cite-action" :disabled="disabled||(!extraFindings.trim()&&!extraImpression.trim())" @click="append">确认追加</button></div></div>
   <div class="detail-actions"><button v-if="canSave" :disabled="disabled||!dirty" @click="emit('save')"><PhFloppyDisk :size="15"/>保存</button><button :disabled="disabled" :aria-expanded="adding" @click="adding=!adding"><PhPlus :size="15"/>追加</button><button class="cite-action" :disabled="disabled" @click="emit('cite',modelValue)"><PhLink :size="15"/>引用</button></div>
-  <p class="detail-hint">{{canSave?'保存为个人模板 · 引用将替换报告描述和诊断':'临时编辑供本次引用，不修改历史记录'}}</p>
+  <!-- <p class="detail-hint">{{canSave?'保存为个人模板 · 引用将替换报告描述和诊断':'临时编辑供本次引用，不修改历史记录'}}</p> -->
 </section>
 </template>

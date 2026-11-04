@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EditorState } from '@tiptap/pm/state';
-import { history, undo } from '@tiptap/pm/history';
+import { closeHistory, history, undo } from '@tiptap/pm/history';
 import { nativeSchema } from '../src/free-template/model.mjs';
 import { reorderBlock } from '../src/free-template/block-drag.mjs';
 import { columnInsertTarget, insertColumnSlash } from '../src/editor/column-insert.mjs';
 import { bodySchema } from '../src/editor/body-schema.mjs';
+import { insertKeyImagesTransaction } from '../src/editor/key-image-insert.mjs';
+import { removeColumnImage } from '../src/editor/report-images.mjs';
 import { createBlockHoverDwell } from '../src/editor/block-hover-dwell.mjs';
 
 test('drag handle stays on a block until the next block has been hovered briefly', () => {
@@ -128,4 +130,36 @@ test('column add control uses an existing empty row and ignores non-text blocks'
     assert.equal(state.doc.firstChild.child(1).lastChild.textContent,'/');
     assert.equal(state.selection.$from.parentOffset,1);
   }
+});
+
+test('column add control remains available after deleting its image', () => {
+  const doc=bodySchema.nodeFromJSON({type:'doc',content:[{type:'columns',content:[
+    {type:'column',content:[{type:'reportImage',attrs:{imageId:'lumbar',caption:'原影像'}}]},
+    {type:'column',content:[{type:'reportImage',attrs:{imageId:'knee',caption:'影像'}}]},
+  ]}]});
+  let state=EditorState.create({doc,plugins:[history()]});
+  state=state.apply(removeColumnImage(state,2));
+  state=state.apply(closeHistory(state.tr));
+  const emptied=state.doc.toJSON();
+  const columnDom={getBoundingClientRect:()=>({left:300,top:100,bottom:250})};
+  const child={closest:()=>columnDom};
+  const blockDom={getBoundingClientRect:()=>({top:100,bottom:200}),contains:target=>target===child};
+  const view={state,dom:{contains:x=>x===columnDom},posAtDOM:()=>2,nodeDOM:()=>blockDom};
+  const target=columnInsertTarget(view,child,150);
+  assert.equal(target.pos,2);
+  state=state.apply(insertColumnSlash(state,target));
+  assert.equal(state.doc.firstChild.firstChild.firstChild.type.name,'paragraph');
+  assert.equal(state.doc.firstChild.firstChild.lastChild.textContent,'/');
+  assert.equal(state.selection.$from.parent.type.name,'paragraph');
+  const from=state.selection.from-1;
+  state=state.apply(insertKeyImagesTransaction(state,{from,to:from+1},['cervical','knee']));
+  assert.deepEqual(state.doc.firstChild.firstChild.content.content.map(node=>node.attrs.imageId),['cervical','knee']);
+  assert.equal(state.doc.firstChild.child(1).firstChild.attrs.imageId,'knee');
+  assert.ok(undo(state,tr=>{state=state.apply(tr)}));
+  assert.equal(state.doc.firstChild.firstChild.lastChild.textContent,'/');
+  assert.ok(undo(state,tr=>{state=state.apply(tr)}));
+  assert.deepEqual(state.doc.toJSON(),emptied);
+
+  const filled=state.doc.firstChild.child(1).firstChild;
+  assert.equal(insertColumnSlash(state,{pos:2+state.doc.firstChild.firstChild.nodeSize,node:filled}),null);
 });

@@ -64,12 +64,58 @@ The report body and free-template slash menus share a Feishu-style column picker
 
 When hovering over a text block inside a column, show only an add button following the pointer in that column; clicking it opens the insert menu on that block without creating another row. Do not show the button on non-text blocks. Restore the normal block controls outside columns.
 
+Exception (2026-11-04): an empty report-image slot in a column must also expose the editor add button, so images can be added through the insert menu after removal. Keep other non-text blocks unchanged.
+
+After deleting an image from a column, remove the image block rather than creating an image placeholder. Keep the empty column available for image drag-and-drop and its editor add button; preserve existing saved placeholders.
+
 ## Approved key image menu (2026-11-04)
 
 The report body's plus/slash insert menu includes 关键影像 under 自定义块. Open a secondary menu with image thumbnails, names, metadata and multi-select checkboxes using the same key-image data as the evidence sidebar. Keep the menu open while selecting; show the selected count and resulting column count, 清空 and 插入 N 张. Insert at the original menu anchor, one equal native column per selected image in selection order. Preserve surrounding content, report persistence, read-only/print rendering and single-step undo. The approved visual is `designs/key-image-menu-approved.png`.
 
 When the insertion anchor is already inside a column, insert the selected image blocks directly into that current column in selection order; do not create nested columns. Show 插入当前栏 in the selection summary. Only insertions outside columns create one new column per selected image.
 
+Outside existing columns, selecting four key images inserts a 2×2 layout and selecting six inserts a 2×3 layout, in selection order. Show the resulting rows and columns in the picker. Other selection counts and insertion inside an existing column retain their prior behavior.
+
+The 四张图片 and 六张图片 layout presets create empty editable columns without “拖入关键影像” placeholder blocks. Keep image drag-and-drop and the editor add button available in those columns; preserve existing report snapshots and other layout presets.
+
 ## Column deletion (2026-11-04)
 
 In the report body and free-template editors, clicking a column container's top/bottom edge selects the layout; pressing Delete removes that selected container. Keep the existing add/resize controls between columns. Selecting an individual column removes only that column, removing the wrapper when its final column is deleted. Cursor/text selections inside columns retain normal text deletion. Read-only views cannot delete layouts, and layout deletion is undoable in one step.
+
+## Deployment shape (2026-11-04)
+
+The test server is internal/VPN-only, Linux, and has no Node or pnpm preinstalled; plain HTTP is acceptable. Package on the Windows dev machine with `deploy/pack.ps1`, then upload `deploy/install.sh` plus the tarball and run `sudo bash install.sh <tarball>` on the server. `install.sh` installs Node 24 and pnpm 12 into `<app dir>/runtime` (never system-wide), extracts the package without touching `data/`, installs systemd service `report-prototype` (user `report`) and self-checks `/api/hospitals` plus the home page. nginx is optional; when used it must forward `Host $http_host` and the service stays bound to 127.0.0.1:4173. Without nginx, deploy with `--host 0.0.0.0` and access port 4173 directly inside the VPN. The app has no authentication, so it must never be exposed publicly. Lockfile is `lockfileVersion: 9.0` and requires pnpm 12; `vite preview` is the runtime because the SQLite API is a Vite middleware plugin.
+
+Packaging goes through `deploy/pack-archive.mjs` (Node), not `tar`: the dev machine runs a transparent-encryption DLP client, so `tar`/`cp` read ciphertext and produced a package whose HTML/JS arrived encrypted on the server. Node reads plaintext and writes a plaintext `.tar.gz`; `install.sh` verifies `dist/client/index.html` starts with `<!doctype` and then checks every file against the bundled `.pack-manifest` (sha256) before starting the service.
+
+## Report demo visual update (2026-11-04)
+
+For report-demo presentation only, use the reference heading “瑞派宠物影像诊断中心” / “图像诊断报告”, the supplied hospital logo, larger patient/exam fields and the supplied signature/footer reference. The demo shows the eight supplied key images; retain legacy image IDs for existing reports. Do not overwrite saved templates or report snapshots. Match the demo in enlarged and paginated print previews, with signatures only on the last page. Keep slash insertion and block controls without showing the editor hint or focus stripe.
+
+The report demo's first header field is labeled “型号” instead of “名字”; retain its existing data value.
+
+## Interface typography (2026-11-04)
+
+Use larger, readable interface text for an older user group while preserving the existing overall layout and visual style. The interface should resemble browser zoom at 125%, based on the already enlarged typography; printing remains at its configured A4 scale.
+
+## Report print header (2026-11-04)
+
+This supersedes the earlier repeated-report-header rule. The hospital heading, logo, report title and patient/exam header fields appear only on the first printed page. Continuation pages use the reclaimed space for report content. Print preview and print/PDF share pagination; retain table continuation headers, page numbers on every page, and the bottom-aligned signature/footer on the final page.
+
+## Report citation insertion (2026-11-04)
+
+This supersedes replacement citation behavior: personal-template and history citations insert both description and diagnosis at the last position chosen in the editable report body, preserving existing content including selected text. Citation clicks show no notifications, including when there is no position or content to insert. A citation is undoable in one step.
+
+## Column insertion cursor (2026-11-04)
+
+After creating native columns from the insert menu in the report body or free-template editor, place the cursor on the line immediately below the entire layout. Preserve existing content there; create an empty paragraph if needed. The insertion remains undoable in one step.
+
+## Report block insertion cursor (2026-11-04)
+
+After creating a report body block via the insert menu, put the cursor on the body line after the entire new block, preserving existing content and creating a paragraph when necessary. This cursor is immediately available for citation without another click. Keep block insertion and citation individually undoable. Do not change other free-template insertion behavior.
+
+## Empty column editing (2026-11-04)
+
+When inserting ordinary native columns in the report body or free-template editor, each column has an empty editable paragraph, while the initial cursor remains below the whole layout. Clicking the interior of an empty column places the cursor in its paragraph. Preserve individual-column and layout edge selection, resizing, existing content behavior, image layout presets, and single-step undo.
+
+New layouts created by the report body's key-image menu also place an empty editable paragraph below each image; clicking the column's empty interior positions the cursor there. Preserve image interaction, layout edge selection, single-step undo, existing report snapshots, and the behavior of inserting images into an existing column.

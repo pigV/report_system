@@ -1,3 +1,5 @@
+import { effectiveZoom } from './effective-zoom.mjs';
+import { sideMenuOffset } from './side-menu-position.mjs';
 import { ref, onBeforeUnmount } from 'vue';
 import { reorderBlock } from '../free-template/block-drag.mjs';
 import { createBlockHoverDwell } from './block-hover-dwell.mjs';
@@ -29,6 +31,7 @@ export function useBlockDrag(editor, isDisabled) {
   let hoverMenu = null;
   let hoverEditor = null;
   let anchorTop = null;
+  let anchorLeft = null;
 
   // Yiitap reanchors the menu on mouseover. Hold it on the current block until
   // the pointer has stayed over a different block long enough to select it.
@@ -52,10 +55,12 @@ export function useBlockDrag(editor, isDisabled) {
     if (!menu?.isConnected) return;
     const rect = menu.getBoundingClientRect();
     const view = ed.view.dom.getBoundingClientRect();
-    const previous = menuOffsets.get(menu) ?? 0;
-    const desiredTop = Math.max(view.top, Math.min(top, view.bottom - rect.height));
-    const offset = desiredTop - (rect.top - previous);
-    menu.style.transform = `translateY(${offset}px)`;
+    const offset = sideMenuOffset({
+      rect, view, anchorLeft, anchorTop: top,
+      previous: menuOffsets.get(menu) ?? { x: 0, y: 0 },
+      menuScale: effectiveZoom(menu), editorScale: effectiveZoom(ed.view.dom),
+    });
+    menu.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
     menuOffsets.set(menu, offset);
   }
 
@@ -67,6 +72,7 @@ export function useBlockDrag(editor, isDisabled) {
   const hoverDwell = createBlockHoverDwell(dom => {
     if (!hoverEditor || !hoverMenu || !dom.isConnected) return;
     anchorTop = blockTop(dom, hoverMenu);
+    anchorLeft = dom.getBoundingClientRect().left;
     positionMenu(hoverEditor, hoverMenu, anchorTop);
   }, {delay:HOVER_DWELL_MS});
 
@@ -76,6 +82,7 @@ export function useBlockDrag(editor, isDisabled) {
       hoverDwell.reset();
       hoverMenu = menu;
       anchorTop = null;
+      anchorLeft = null;
     }
     hoverEditor = ed;
     const items = blocks().filter(item => item.node !== sourceNode
@@ -83,8 +90,9 @@ export function useBlockDrag(editor, isDisabled) {
     const hovered = items.find(item => y >= item.rect.top && y <= item.rect.bottom)
       ?? [...items].sort((a,b) => Math.abs((a.rect.top+a.rect.bottom)/2-y)-Math.abs((b.rect.top+b.rect.bottom)/2-y))[0];
     if (!hovered) return;
+    if (anchorLeft === null) anchorLeft = hovered.rect.left;
     hoverDwell.aim(hovered.dom);
-    if (anchorTop !== null) positionMenu(ed, menu, anchorTop);
+    positionMenu(ed, menu, anchorTop ?? menu.getBoundingClientRect().top);
   }
 
   function handleHover(event) {
@@ -163,7 +171,7 @@ export function useBlockDrag(editor, isDisabled) {
       const transform = win.getComputedStyle(dom).transform;
       if (!transform || transform === 'none') return rect.top;
       try {
-        return rect.top - new win.DOMMatrixReadOnly(transform).m42;
+        return rect.top - new win.DOMMatrixReadOnly(transform).m42 * effectiveZoom(dom);
       } catch {
         return rect.top;
       }
@@ -201,7 +209,7 @@ export function useBlockDrag(editor, isDisabled) {
       const dom = ed.view.nodeDOM(info.pos);
       if (!dom) return;
       const slotTop = layoutTop(dom);
-      translateY = pointer.y - grabOffset - slotTop;
+      translateY = (pointer.y - grabOffset - slotTop) / effectiveZoom(dom);
       ed.view.dom.style.setProperty('--block-drag-y', `${translateY}px`);
       if (!finished) {
         const view = ed.view.dom.getBoundingClientRect();
@@ -226,7 +234,7 @@ export function useBlockDrag(editor, isDisabled) {
         if (item.node === sourceNode) continue;
         const from = before.get(item.node);
         if (!from) continue;
-        const dy = from.top - item.rect.top;
+        const dy = (from.top - item.rect.top) / effectiveZoom(item.dom);
         if (Math.abs(dy) < 0.5) continue;
         const overshoot = -Math.sign(dy) * 5;
         item.dom.animate(

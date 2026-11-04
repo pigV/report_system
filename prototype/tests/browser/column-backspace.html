@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>分栏退格回归测试</title></head>
+<body><div id="editor"></div>
+<script type="module">
+import {Editor} from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import {bodyExtensions} from '/src/editor/body-schema.mjs';
+import {nativeExtensions} from '/src/free-template/model.mjs';
+
+const p=text=>({type:'paragraph',...(text?{content:[{type:'text',text}]}:{})});
+let editor;
+window.prepare=(kind,text,offset=0)=>{
+  editor?.destroy();
+  const columns={type:'columns',content:[1,2,3].map(i=>({type:'column',content:[kind==='report'?{type:'reportImage',attrs:{imageId:`key-image-${i}`,caption:`影像 ${i}`}}:p(`栏 ${i}`)]}))};
+  editor=new Editor({element:document.querySelector('#editor'),extensions:[StarterKit.configure({codeBlock:false,horizontalRule:false,link:false,blockquote:false,trailingNode:false}),...(kind==='report'?bodyExtensions():nativeExtensions())],content:{type:'doc',content:[columns,p(text)]}});
+  editor.view.focus();
+  editor.commands.setTextSelection(editor.state.doc.firstChild.nodeSize+1+offset);
+  return editor.getJSON();
+};
+window.result=()=>editor.getJSON();
+window.ready=true;
+</script></body></html>

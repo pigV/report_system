@@ -1,3 +1,5 @@
+import { effectiveZoom } from './effective-zoom.mjs';
+
 // Shared pointer reordering for the template grid and binding rows.
 // A grip drag lifts a floating ghost, turns the source slot into a dashed
 // placeholder, and commits order changes live so neighbours can slide (FLIP).
@@ -63,8 +65,9 @@ export function startPointerSort({ event, container, itemSelector, sourceId, gho
     for (const item of after) {
       const from = previous.get(item.id);
       if (!from) continue;
-      const dx = from.left - item.left;
-      const dy = from.top - item.top;
+      const scale = effectiveZoom(item.el);
+      const dx = (from.left - item.left) / scale;
+      const dy = (from.top - item.top) / scale;
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
       item.el.animate(
         [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
@@ -115,7 +118,10 @@ export function startPointerSort({ event, container, itemSelector, sourceId, gho
   };
 
   const placeGhost = () => {
-    if (ghost) ghost.style.transform = `translate3d(${pointer.x - grab.x}px, ${pointer.y - grab.y}px, 0)`;
+    if (ghost) {
+      const scale = effectiveZoom(ghost);
+      ghost.style.transform = `translate3d(${(pointer.x - grab.x) / scale}px, ${(pointer.y - grab.y) / scale}px, 0)`;
+    }
   };
 
   const loop = () => {
@@ -125,7 +131,7 @@ export function startPointerSort({ event, container, itemSelector, sourceId, gho
     const bottom = scroller === doc.scrollingElement ? win.innerHeight : scroller.getBoundingClientRect().bottom;
     const scrollTop = scroller.scrollTop ?? win.scrollY;
     if (lastScroll !== null && scrollTop !== lastScroll) {
-      const delta = scrollTop - lastScroll;
+      const delta = (scrollTop - lastScroll) * effectiveZoom(scroller);
       logical = logical.map(item => ({ ...item, top: item.top - delta, bottom: item.bottom - delta }));
     }
     lastScroll = scrollTop;
@@ -135,7 +141,7 @@ export function startPointerSort({ event, container, itemSelector, sourceId, gho
     if (step) {
       scroller.scrollBy(0, step);
       const next = scroller.scrollTop ?? win.scrollY;
-      const delta = next - scrollTop;
+      const delta = (next - scrollTop) * effectiveZoom(scroller);
       lastScroll = next;
       if (delta) logical = logical.map(item => ({ ...item, top: item.top - delta, bottom: item.bottom - delta }));
       hit();
@@ -158,10 +164,11 @@ export function startPointerSort({ event, container, itemSelector, sourceId, gho
     ghost.querySelectorAll('button,input,select,textarea').forEach(node => node.tabIndex = -1);
     ghost.classList.add('sort-ghost');
     ghost.setAttribute('aria-hidden', 'true');
-    ghost.style.width = `${rect.width}px`;
-    ghost.style.height = `${rect.height}px`;
-    ghost.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
     (ghostHost ?? doc.body).appendChild(ghost);
+    const scale = effectiveZoom(ghost);
+    ghost.style.width = `${rect.width / scale}px`;
+    ghost.style.height = `${rect.height / scale}px`;
+    ghost.style.transform = `translate3d(${rect.left / scale}px, ${rect.top / scale}px, 0)`;
     logical = measure();
     scrollEl = scrollAncestor();
     lastScroll = null;
@@ -200,10 +207,11 @@ export function startPointerSort({ event, container, itemSelector, sourceId, gho
     const target = el?.getBoundingClientRect();
     if (ghost && target && !reducedMotion()) {
       const lifted = ghost;
+      const scale = effectiveZoom(lifted);
       ghost = null;
       try {
         await lifted.animate(
-          [{ transform: lifted.style.transform, opacity: 1 }, { transform: `translate3d(${target.left}px, ${target.top}px, 0)`, opacity: 0.15 }],
+          [{ transform: lifted.style.transform, opacity: 1 }, { transform: `translate3d(${target.left / scale}px, ${target.top / scale}px, 0)`, opacity: 0.15 }],
           { duration: 150, easing: FLIP_EASE },
         ).finished;
       } catch { /* the ghost is discarded below */ }
