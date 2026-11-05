@@ -3,6 +3,24 @@
 import { Selection } from '@tiptap/pm/state';
 import { closeHistory } from '@tiptap/pm/history';
 
+export function dragTargetAt(geometry, pointerY, sourceNode) {
+  let index = 0;
+  for (const item of geometry) {
+    if (item.node === sourceNode) continue;
+    if (pointerY < (item.top + item.bottom) / 2) return { index, before:item };
+    index++;
+  }
+  return { index, before:null };
+}
+
+export function affectedDragBlocks(geometry, sourceNode, targetIndex) {
+  const sourceIndex = geometry.findIndex(item => item.node === sourceNode);
+  if (sourceIndex < 0 || targetIndex === sourceIndex) return [];
+  const start = Math.min(sourceIndex, targetIndex);
+  const end = Math.max(sourceIndex, targetIndex);
+  return geometry.filter((item, index) => item.node !== sourceNode && index >= start && index <= end);
+}
+
 // One transaction keeps a block move atomic for undo and leaves nested content intact.
 // Live drags skip closing history on every crossing and suppress scrolling until drop.
 export function reorderBlock(state, from, boundary, { closeGroup = true, scrollIntoView = true } = {}) {

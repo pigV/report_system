@@ -26,7 +26,7 @@ test('selected images produce exact column count in selection order without dupl
   assert.equal(keyImageColumns(['unknown']),null);
   assert.equal(keyImageColumns(['knee','unknown','knee']).content.length,1);
 });
-test('new key-image layouts create an empty editable line below each image',()=>{
+test('new key-image layouts do not add an empty line below each image',()=>{
   for(const count of [1,2,4,6]){
     const ids=keyImages.slice(0,count).map(image=>image.id);
     const doc=bodySchema.nodeFromJSON({type:'doc',content:[p('/')]}),state=EditorState.create({doc});
@@ -34,11 +34,7 @@ test('new key-image layouts create an empty editable line below each image',()=>
     const columns=[];
     result.forEach(row=>row.forEach(column=>columns.push(column)));
     assert.deepEqual(columns.map(column=>column.firstChild.attrs.imageId),ids);
-    for(const column of columns){
-      assert.equal(column.childCount,2);
-      assert.equal(column.child(1).type.name,'paragraph');
-      assert.equal(column.child(1).textContent,'');
-    }
+    for(const column of columns)assert.equal(column.childCount,1);
   }
 });
 test('removing a key image keeps the empty text line in its column',()=>{

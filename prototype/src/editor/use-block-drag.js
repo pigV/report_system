@@ -2,9 +2,9 @@
 // Yiitap 提供手柄 UI；此处用鼠标坐标/动画做交互，reorderBlock 用 PM 事务改真实块顺序。
 // 当前这条路径监听鼠标事件，不等于另一套 pointer-sort 对触摸/手写笔的支持。
 import { effectiveZoom } from './effective-zoom.mjs';
-import { sideMenuOffset } from './side-menu-position.mjs';
+import { sideMenuAnchorTop, sideMenuOffset } from './side-menu-position.mjs';
 import { ref, onBeforeUnmount } from 'vue';
-import { reorderBlock } from '../free-template/block-drag.mjs';
+import { affectedDragBlocks, dragTargetAt, reorderBlock } from '../free-template/block-drag.mjs';
 import { createBlockHoverDwell } from './block-hover-dwell.mjs';
 
 // Both document editors share Yiitap's six-dot handle. A drag lifts the block
@@ -33,6 +33,7 @@ export function useBlockDrag(editor, isDisabled) {
   const menuOffsets = new WeakMap();
   let stopDrag = () => {};
   let suppressClick = false;
+  let activeDrag = false;
   let hoverMenu = null;
   let hoverEditor = null;
   let anchorTop = null;
@@ -72,7 +73,7 @@ export function useBlockDrag(editor, isDisabled) {
 
   function blockTop(dom, menu) {
     const rect = dom.getBoundingClientRect();
-    return rect.top + Math.min(rect.height, 26) / 2 - menu.getBoundingClientRect().height / 2;
+    return sideMenuAnchorTop({ rect, menuHeight:menu.getBoundingClientRect().height, editorScale:effectiveZoom(dom) });
   }
 
   const hoverDwell = createBlockHoverDwell(dom => {
@@ -83,7 +84,16 @@ export function useBlockDrag(editor, isDisabled) {
     positionMenu(hoverEditor, hoverMenu, anchorTop);
   }, {delay:HOVER_DWELL_MS});
 
-  function trackBlock(ed, menu, y, sourceNode=null, originalRect=null) {
+  function hoveredBlock(items, y, sourceNode=null, originalRect=null) {
+    const candidates = items.filter(item => item.node !== sourceNode
+      || (originalRect && y >= originalRect.top && y <= originalRect.bottom));
+    const top = item => item.top ?? item.rect.top;
+    const bottom = item => item.bottom ?? item.rect.bottom;
+    return candidates.find(item => y >= top(item) && y <= bottom(item))
+      ?? [...candidates].sort((a,b) => Math.abs((top(a)+bottom(a))/2-y)-Math.abs((top(b)+bottom(b))/2-y))[0];
+  }
+
+  function trackBlock(ed, menu, y, items, sourceNode=null, originalRect=null) {
     if (!menu) return;
     if (menu !== hoverMenu) {
       hoverDwell.reset();
@@ -92,21 +102,31 @@ export function useBlockDrag(editor, isDisabled) {
       anchorLeft = null;
     }
     hoverEditor = ed;
-    const items = blocks().filter(item => item.node !== sourceNode
-      || (originalRect && y >= originalRect.top && y <= originalRect.bottom));
-    const hovered = items.find(item => y >= item.rect.top && y <= item.rect.bottom)
-      ?? [...items].sort((a,b) => Math.abs((a.rect.top+a.rect.bottom)/2-y)-Math.abs((b.rect.top+b.rect.bottom)/2-y))[0];
+    const hovered = hoveredBlock(items, y, sourceNode, originalRect);
     if (!hovered) return;
     if (anchorLeft === null) anchorLeft = hovered.rect.left;
     hoverDwell.aim(hovered.dom);
     positionMenu(ed, menu, anchorTop ?? menu.getBoundingClientRect().top);
   }
 
+  function trackDragHover(ed, menu, y, items, sourceNode, originalRect) {
+    if (!menu) return;
+    if (menu !== hoverMenu) {
+      hoverDwell.reset();
+      hoverMenu = menu;
+      anchorTop = null;
+      anchorLeft = null;
+    }
+    hoverEditor = ed;
+    const hovered = hoveredBlock(items, y, sourceNode, originalRect);
+    if (hovered) hoverDwell.aim(hovered.dom);
+  }
+
   function handleHover(event) {
     const ed = editor.value;
-    if (!ed || ed.isDestroyed || isDisabled() || !ed.view.dom.contains(event.target)) return;
+    if (activeDrag || !ed || ed.isDestroyed || isDisabled() || !ed.view.dom.contains(event.target)) return;
     const menu = visibleMenu(ed, event.clientY);
-    trackBlock(ed, menu, event.clientY);
+    trackBlock(ed, menu, event.clientY, blocks());
   }
 
   function handleLeave() { hoverDwell.leave(); }
@@ -117,10 +137,12 @@ export function useBlockDrag(editor, isDisabled) {
     const ed = editor.value;
     const result = [];
     if (!ed || ed.isDestroyed) return result;
+    let index = 0;
     ed.state.doc.forEach((node, pos) => {
+      const currentIndex = index++;
       const dom = ed.view.nodeDOM(pos);
       if (!dom?.getBoundingClientRect) return;
-      result.push({ node, pos, dom, rect: dom.getBoundingClientRect() });
+      result.push({ node, pos, index:currentIndex, dom, rect: dom.getBoundingClientRect() });
     });
     return result;
   }
@@ -158,11 +180,15 @@ export function useBlockDrag(editor, isDisabled) {
     let moved = false;
     let translateY = 0;
     let styledIndex = -1;
-    let lastBoundary = null;
     let lastMoveAt = 0;
     let raf = 0;
     let scrollEl;
     let styleEl = null;
+    let geometry = [];
+    let edgeTop = 0;
+    let edgeBottom = win.innerHeight;
+    const dragScale = effectiveZoom(source.dom);
+    const editorRect = ed.view.dom.getBoundingClientRect();
 
     const scrollAncestor = () => {
       let node = ed.view.dom.parentElement;
@@ -176,8 +202,7 @@ export function useBlockDrag(editor, isDisabled) {
 
     // Layout position without the element's own translate, so a block that is
     // mid-slide still reports the slot it is moving to.
-    const layoutTop = dom => {
-      const rect = dom.getBoundingClientRect();
+    const layoutTop = (dom, rect) => {
       const transform = win.getComputedStyle(dom).transform;
       if (!transform || transform === 'none') return rect.top;
       try {
@@ -187,18 +212,27 @@ export function useBlockDrag(editor, isDisabled) {
       }
     };
 
+    const measureGeometry = () => blocks().map(item => {
+      const top = layoutTop(item.dom, item.rect);
+      return { ...item, top, bottom:top + item.rect.height };
+    });
+
+    const positionDragMenuAnchor = () => {
+      if (!dragMenu || hoverMenu !== dragMenu) return;
+      const dom = hoverDwell.current();
+      const item = geometry.find(item => item.dom === dom);
+      if (!item) return;
+      anchorTop = blockTop(item.dom, dragMenu);
+      anchorLeft = item.rect.left;
+      positionMenu(ed, dragMenu, anchorTop);
+    };
+
     // Locate the dragged node in the current document by identity: reorderBlock
     // re-inserts the same node object, so its position survives each move.
     // 节点被重排后旧 pos 就失效；按同一个节点对象在新 state.doc 中重新找位置。
     const locate = () => {
-      let found = null;
-      let index = 0;
-      ed.state.doc.forEach((node, pos) => {
-        if (found) return;
-        if (node === sourceNode) found = { index, pos };
-        index++;
-      });
-      return found;
+      const item = geometry.find(item => item.node === sourceNode);
+      return item ? { index:item.index, pos:item.pos } : null;
     };
 
     const syncRule = index => {
@@ -216,36 +250,32 @@ export function useBlockDrag(editor, isDisabled) {
     // grabOffset 保留初始抓取点，除 effectiveZoom 将屏幕位移转为 CSS 位移。
     const place = () => {
       if (!started || ed.isDestroyed) return;
-      const info = locate();
-      if (!info) return;
-      syncRule(info.index);
-      const dom = ed.view.nodeDOM(info.pos);
-      if (!dom) return;
-      const slotTop = layoutTop(dom);
-      translateY = (pointer.y - grabOffset - slotTop) / effectiveZoom(dom);
+      const item = geometry.find(item => item.node === sourceNode);
+      if (!item) return;
+      syncRule(item.index);
+      translateY = (pointer.y - grabOffset - item.top) / dragScale;
       ed.view.dom.style.setProperty('--block-drag-y', `${translateY}px`);
       if (!finished) {
-        const view = ed.view.dom.getBoundingClientRect();
-        dropLine.value = { left: view.left + 30, top: slotTop, width: view.width - 60 };
+        const next = { left:editorRect.left + 30, top:item.top, width:editorRect.width - 60 };
+        const current = dropLine.value;
+        if (!current || current.left !== next.left || current.top !== next.top || current.width !== next.width) dropLine.value = next;
       }
     };
 
-    const settle = () => {
-      for (const item of blocks()) {
-        if (item.node === sourceNode) continue;
-        for (const animation of item.dom.getAnimations()) animation.cancel();
-      }
+    const settle = items => {
+      for (const item of items) for (const animation of item.dom.getAnimations()) animation.cancel();
     };
 
     // Capture the visible rects first, so a crossing mid-slide continues from
     // where the neighbours actually are instead of snapping to final layout.
-    const snapshot = () => new Map(blocks().filter(item => item.node !== sourceNode).map(item => [item.node, item.rect]));
+    const snapshot = items => new Map(items.map(item => [item.node, item.dom.getBoundingClientRect()]));
 
     // FLIP：记录排序前矩形，用新矩形算偏移，再从偏移量动画到 0；不修改正文 JSON。
-    const flip = before => {
+    const flip = (before, after, affected) => {
       if (reducedMotion()) return;
-      for (const item of blocks()) {
-        if (item.node === sourceNode) continue;
+      const affectedNodes = new Set(affected.map(item => item.node));
+      for (const item of after) {
+        if (!affectedNodes.has(item.node)) continue;
         const from = before.get(item.node);
         if (!from) continue;
         const dy = (from.top - item.rect.top) / effectiveZoom(item.dom);
@@ -268,31 +298,23 @@ export function useBlockDrag(editor, isDisabled) {
       if (!started || finished || isDisabled() || ed.isDestroyed) return;
       const info = locate();
       if (!info) return;
-      const list = [];
-      ed.state.doc.forEach((node, pos) => {
-        if (node === sourceNode) return;
-        const dom = ed.view.nodeDOM(pos);
-        if (!dom?.getBoundingClientRect) return;
-        const rect = dom.getBoundingClientRect();
-        const top = layoutTop(dom);
-        list.push({ pos, top, bottom: top + rect.height });
-      });
-      const next = list.find(item => pointer.y < (item.top + item.bottom) / 2);
-      const boundary = next?.pos ?? ed.state.doc.content.size;
-      if (boundary === lastBoundary) return;
-      lastBoundary = boundary;
+      const target = dragTargetAt(geometry, pointer.y, sourceNode);
+      if (target.index === info.index) return;
+      const affected = affectedDragBlocks(geometry, sourceNode, target.index);
+      const boundary = target.before?.pos ?? ed.state.doc.content.size;
       // 连续跨位尽量沿用历史组；暂停超过阈值会切组，因此长拖动不保证总是一步撤销。
       const closeGroup = Date.now() - lastMoveAt > 500;
       const tr = reorderBlock(ed.state, info.pos, boundary, { closeGroup, scrollIntoView: false });
       if (!tr) return;
-      const before = snapshot();
-      settle();
+      const before = snapshot(affected);
+      settle(affected);
       moved = true;
       lastMoveAt = Date.now();
       ed.view.dispatch(tr);
-      const movedInfo = locate();
-      if (movedInfo) syncRule(movedInfo.index);
-      flip(before);
+      syncRule(target.index);
+      geometry = measureGeometry();
+      positionDragMenuAnchor();
+      flip(before, geometry, affected);
     };
 
     // Put the block back in its original slot: insert before the block that now
@@ -306,25 +328,48 @@ export function useBlockDrag(editor, isDisabled) {
       ed.state.doc.forEach((node, pos) => { if (node !== sourceNode) others.push({ pos }); });
       const boundary = originalIndex < others.length ? others[originalIndex].pos : ed.state.doc.content.size;
       const tr = reorderBlock(ed.state, info.pos, boundary, { scrollIntoView: false });
-      if (tr) ed.view.dispatch(tr);
+      if (tr) {
+        ed.view.dispatch(tr);
+        syncRule(originalIndex);
+        geometry = measureGeometry();
+      }
       const restored = locate();
       if (restored) syncRule(restored.index);
       place();
     };
 
-    // 每个动画帧同时做边缘滚动、跟手显示和命中检测；结束后必须 cancelAnimationFrame。
+    // 每帧只用缓存命中与更新跟手位置；只有滚动、换序或缩放时重新测量布局。
     const loop = () => {
       if (!started || finished) return;
-      const top = scrollEl === doc.scrollingElement ? 0 : scrollEl.getBoundingClientRect().top;
-      const bottom = scrollEl === doc.scrollingElement ? win.innerHeight : scrollEl.getBoundingClientRect().bottom;
       let step = 0;
-      if (pointer.y < top + SCROLL_EDGE) step = -SCROLL_STEP;
-      else if (pointer.y > bottom - SCROLL_EDGE) step = SCROLL_STEP;
+      if (pointer.y < edgeTop + SCROLL_EDGE) step = -SCROLL_STEP;
+      else if (pointer.y > edgeBottom - SCROLL_EDGE) step = SCROLL_STEP;
+      const previousScrollTop = scrollEl.scrollTop;
       if (step) scrollEl.scrollBy(0, step);
-      if (dragMenu) trackBlock(ed, dragMenu, pointer.y, sourceNode, source.rect);
-      place();
+      if (scrollEl.scrollTop !== previousScrollTop) {
+        geometry = measureGeometry();
+        positionDragMenuAnchor();
+      }
+      if (dragMenu) trackDragHover(ed, dragMenu, pointer.y, geometry, sourceNode, source.rect);
       retarget();
+      place();
       raf = win.requestAnimationFrame(loop);
+    };
+
+    const resize = () => {
+      if (!started || finished) return;
+      if (scrollEl === doc.scrollingElement) {
+        edgeTop = 0;
+        edgeBottom = win.innerHeight;
+      } else {
+        const rect = scrollEl.getBoundingClientRect();
+        edgeTop = rect.top;
+        edgeBottom = rect.bottom;
+      }
+      geometry = measureGeometry();
+      positionDragMenuAnchor();
+      retarget();
+      place();
     };
 
     const removeListeners = () => {
@@ -332,6 +377,7 @@ export function useBlockDrag(editor, isDisabled) {
       doc.removeEventListener('mouseup', up);
       doc.removeEventListener('keydown', key, true);
       win.removeEventListener('blur', blur);
+      win.removeEventListener('resize', resize);
       win.cancelAnimationFrame(raf);
     };
 
@@ -347,6 +393,7 @@ export function useBlockDrag(editor, isDisabled) {
 
     const begin = () => {
       started = true;
+      activeDrag = true;
       styleEl = doc.createElement('style');
       styleEl.setAttribute('data-block-drag-style', dragToken);
       doc.head.appendChild(styleEl);
@@ -354,8 +401,19 @@ export function useBlockDrag(editor, isDisabled) {
       ed.view.dom.style.setProperty('--block-drag-y', '0px');
       doc.documentElement.classList.add('sorting');
       scrollEl = scrollAncestor();
-      place();
+      if (scrollEl === doc.scrollingElement) {
+        edgeTop = 0;
+        edgeBottom = win.innerHeight;
+      } else {
+        const rect = scrollEl.getBoundingClientRect();
+        edgeTop = rect.top;
+        edgeBottom = rect.bottom;
+      }
+      syncRule(originalIndex);
+      geometry = measureGeometry();
+      positionDragMenuAnchor();
       retarget();
+      place();
       raf = win.requestAnimationFrame(loop);
     };
 
@@ -363,6 +421,7 @@ export function useBlockDrag(editor, isDisabled) {
     const finish = (commit, event) => {
       if (finished) return;
       finished = true;
+      activeDrag = false;
       removeListeners();
       dropLine.value = null;
       doc.documentElement.classList.remove('sorting');
@@ -402,7 +461,6 @@ export function useBlockDrag(editor, isDisabled) {
 
     const move = e => {
       pointer.y = e.clientY;
-      if (dragMenu) trackBlock(ed, dragMenu, e.clientY, sourceNode, source.rect);
       if (!started) {
         if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return;
         begin();
@@ -428,6 +486,7 @@ export function useBlockDrag(editor, isDisabled) {
     doc.addEventListener('mouseup', up);
     doc.addEventListener('keydown', key, true);
     win.addEventListener('blur', blur);
+    win.addEventListener('resize', resize);
   }
 
   function handleClick(event) {

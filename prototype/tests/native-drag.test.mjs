@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EditorState } from '@tiptap/pm/state';
 import { closeHistory, history, undo } from '@tiptap/pm/history';
 import { nativeSchema } from '../src/free-template/model.mjs';
-import { reorderBlock } from '../src/free-template/block-drag.mjs';
+import { affectedDragBlocks, dragTargetAt, reorderBlock } from '../src/free-template/block-drag.mjs';
 import { columnInsertTarget, insertColumnSlash } from '../src/editor/column-insert.mjs';
 import { bodySchema } from '../src/editor/body-schema.mjs';
 import { insertKeyImagesTransaction } from '../src/editor/key-image-insert.mjs';
@@ -33,6 +33,20 @@ test('drag handle stays on a block until the next block has been hovered briefly
   assert.equal(hover.current(),third);
   hover.reset();
   assert.equal(hover.current(),null);
+});
+
+test('drag target jumps across cached rows and selects only affected neighbours', () => {
+  const source={},a={},b={},c={},d={};
+  const geometry=[
+    {node:a,top:0,bottom:20},
+    {node:source,top:20,bottom:40},
+    {node:b,top:40,bottom:60},
+    {node:c,top:60,bottom:80},
+    {node:d,top:80,bottom:100},
+  ];
+  const target=dragTargetAt(geometry,85,source);
+  assert.deepEqual(target,{index:3,before:geometry[4]});
+  assert.deepEqual(affectedDragBlocks(geometry,source,target.index),[geometry[2],geometry[3]]);
 });
 
 test('block reorder preserves field identity, nested content, and single-step undo', () => {

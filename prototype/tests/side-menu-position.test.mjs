@@ -37,3 +37,13 @@ test('menu remains within the editor vertically after the block moves', () => {
   assert.equal(offset.x, 0);
   assert.equal(offset.y, 74);
 });
+
+test('side-menu anchor accounts for the editor zoom when aligning with a text line', async () => {
+  const { sideMenuAnchorTop } = await import('../src/editor/side-menu-position.mjs');
+  const top = sideMenuAnchorTop?.({
+    rect: { top: 100, height: 32 },
+    menuHeight: 32.5,
+    editorScale: 1.25,
+  });
+  assert.equal(top, 99.75);
+});

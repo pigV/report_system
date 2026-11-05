@@ -64,7 +64,7 @@ export function executeNativeInsert(editor,range,item,options={}){
  if(item.action==='keyImages'){
   if(!editor.isEditable)return false;
    // 图片插入需要精确的栏内/栏外结构，因此直接构建 ProseMirror 事务。
-   const tr=insertKeyImagesTransaction(editor.state,range,item.imageIds??[]);
+    const tr=insertKeyImagesTransaction(editor.state,range,item.imageIds??[],{joinHistory:options.joinHistory});
    if(!tr)return false;
    if(options.afterBlock)cursorAfterLastInsertion(tr);
    editor.view.dispatch(tr);
@@ -78,7 +78,7 @@ export function executeNativeInsert(editor,range,item,options={}){
  if(item.action==='customPictures'){editor.view.dom.dispatchEvent(new CustomEvent('report-custom-pictures',{bubbles:true,detail:{range}}));return true}
  // Tiptap chain 把一组命令加入同一条事务；run 才执行。focus 把输入焦点还给正文。
  const chain=editor.chain().focus();
- if(options.afterBlock)chain.command(({tr})=>{closeHistory(tr);return true});
+  if(options.afterBlock&&!options.joinHistory)chain.command(({tr})=>{closeHistory(tr);return true});
  // 去掉 slash 触发文本；这与侧栏引用保留文字选区的插入路径不同。
  chain.deleteRange(range);
  if(item.action.startsWith('pictures-')){

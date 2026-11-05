@@ -16,8 +16,8 @@ export function keyImageGrid(count){
 }
 
 function columnsForImages(images){
-  // 每张图包在等宽原生 column 中，下面放空段落，使点击图片下方还能继续写文字。
-  return {type:'columns',content:images.map(image=>({type:'column',attrs:{flexGrow:1},content:[image,{type:'paragraph'}]}))};
+  // 每张图包在等宽原生 column 中；不在图片下方自动增加空段落。
+  return {type:'columns',content:images.map(image=>({type:'column',attrs:{flexGrow:1},content:[image]}))};
 }
 
 export function keyImageColumns(ids){
@@ -35,7 +35,7 @@ export function isKeyImageInsertionInColumn(state,range){
 
 // 多选期间保留菜单打开时的插入位置；已有栏内直接插入，栏外才创建新布局。
 // 四张和六张影像按两行排列，其余数量保持单行；整次插入可一步撤销。
-export function insertKeyImagesTransaction(state,range,ids){
+export function insertKeyImagesTransaction(state,range,ids,{joinHistory=false}={}){
   const images=selectedImageNodes(ids);
   if(!images.length)return null;
   const {columns}=keyImageGrid(images.length);
@@ -43,7 +43,7 @@ export function insertKeyImagesTransaction(state,range,ids){
   const content=isKeyImageInsertionInColumn(state,range)?images:
     Array.from({length:Math.ceil(images.length/columns)},(_,i)=>columnsForImages(images.slice(i*columns,(i+1)*columns)));
   // 先删 slash 命令范围，再将选区缩到原起点；后续替换的是这个空选区，而非其他正文。
-  const tr=closeHistory(state.tr).delete(range.from,range.to);
+  const tr=(joinHistory?state.tr:closeHistory(state.tr)).delete(range.from,range.to);
   tr.setSelection(TextSelection.create(tr.doc,range.from));
   // 普通 JSON → schema 节点 → Fragment 节点集合 → 完整 Slice；0,0 表示片段两端不开放。
   // 调用者 menu.mjs 还会定位布局后光标、dispatch，并为后续编辑切开历史分组。

@@ -4,7 +4,8 @@
 import { shallowRef, watch, onBeforeUnmount } from 'vue';
 import { columnInsertTarget, insertColumnSlash } from './column-insert.mjs';
 
-const props=defineProps({editor:Object,disabled:Boolean});
+const props=defineProps({editor:Object,disabled:Boolean,openAtCurrentLine:Boolean});
+const emit=defineEmits(['open-current-line']);
 const target=shallowRef(null);
 let doc=null;
 function move(event){
@@ -23,6 +24,7 @@ function insert(){
   // 此处才提交事务并还原焦点；点击菜单/按钮不直接把编辑器 content prop 替换成新 JSON。
   const ed=props.editor,selected=target.value;
   if(!ed||!selected||props.disabled||!ed.isEditable||ed.isDestroyed)return;
+  if(props.openAtCurrentLine){emit('open-current-line',selected);return}
   const tr=insertColumnSlash(ed.state,selected);
   clear();
   if(tr){ed.view.dispatch(tr);ed.view.focus()}
